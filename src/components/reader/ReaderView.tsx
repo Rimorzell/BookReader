@@ -1,0 +1,219 @@
+import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { EpubRenderer } from './EpubRenderer';
+import { ReaderTopBar } from './ReaderTopBar';
+import { ReaderBottomBar } from './ReaderBottomBar';
+import { TableOfContents } from './TableOfContents';
+import { ReaderSettings } from './ReaderSettings';
+import { BookmarksPanel } from './BookmarksPanel';
+import { useReaderStore, useLibraryStore } from '../../stores';
+import type { TocItem } from '../../types';
+
+export function ReaderView() {
+  const { bookId } = useParams<{ bookId: string }>();
+  const navigate = useNavigate();
+  const { books, updateReadingTime } = useLibraryStore();
+  const {
+    isUIVisible,
+    showUI,
+    hideUI,
+    toggleUI,
+    isTocOpen,
+    setTocOpen,
+    isSettingsOpen,
+    setSettingsOpen,
+    isBookmarksOpen,
+    setBookmarksOpen,
+    isLoading,
+    error,
+    endSession,
+    reset,
+  } = useReaderStore();
+
+  const [toc, setToc] = useState<TocItem[]>([]);
+  const rendererRef = useRef<{ goNext: () => void; goPrev: () => void; goToLocation: (cfi: string) => void } | null>(null);
+
+  const book = books.find((b) => b.id === bookId);
+
+  // Auto-hide UI after inactivity
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetHideTimeout = useCallback(() => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+    if (isUIVisible && !isTocOpen && !isSettingsOpen && !isBookmarksOpen) {
+      hideTimeoutRef.current = setTimeout(() => {
+        hideUI();
+      }, 3000);
+    }
+  }, [isUIVisible, isTocOpen, isSettingsOpen, isBookmarksOpen, hideUI]);
+
+  useEffect(() => {
+    resetHideTimeout();
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, [resetHideTimeout]);
+
+  // Handle mouse movement to show UI
+  const handleMouseMove = useCallback(() => {
+    if (!isUIVisible) {
+      showUI();
+    }
+    resetHideTimeout();
+  }, [isUIVisible, showUI, resetHideTimeout]);
+
+  // Handle click on reading area to toggle UI
+  const handleReaderClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    // Only toggle if clicking on the reader area, not controls
+    if (target.closest('[data-reader-content]')) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const width = rect.width;
+
+      // Center third toggles UI
+      if (x > width / 3 && x < (2 * width) / 3) {
+        toggleUI();
+        resetHideTimeout();
+      }
+    }
+  }, [toggleUI, resetHideTimeout]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      const duration = endSession();
+      if (bookId && duration > 0) {
+        updateReadingTime(bookId, duration);
+      }
+      reset();
+    };
+  }, [bookId]);
+
+  // Handle if book not found
+  useEffect(() => {
+    if (!book && !isLoading) {
+      navigate('/');
+    }
+  }, [book, isLoading, navigate]);
+
+  if (!book) {
+    return (
+      <div className="flex items-center justify-center h-full bg-[var(--bg-primary)]">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-[var(--text-secondary)]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full bg-[var(--bg-primary)]">
+        <div className="text-center">
+          <svg className="w-16 h-16 mx-auto mb-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <h2 className="text-lg font-medium text-[var(--text-primary)] mb-2">Failed to load book</h2>
+          <p className="text-[var(--text-secondary)] mb-4">{error}</p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg"
+          >
+            Return to Library
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const handleTocLoaded = (items: TocItem[]) => {
+    setToc(items);
+  };
+
+  const handleNavigate = (href: string) => {
+    // Navigation will be handled by the EpubRenderer
+    rendererRef.current?.goToLocation(href);
+  };
+
+  const handlePrevPage = () => {
+    rendererRef.current?.goPrev();
+  };
+
+  const handleNextPage = () => {
+    rendererRef.current?.goNext();
+  };
+
+  return (
+    <div
+      className="relative h-full overflow-hidden"
+      onMouseMove={handleMouseMove}
+      onClick={handleReaderClick}
+    >
+      {/* Top bar */}
+      <ReaderTopBar
+        book={book}
+        visible={isUIVisible}
+        onOpenToc={() => setTocOpen(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenBookmarks={() => setBookmarksOpen(true)}
+      />
+
+      {/* Reader content */}
+      <div className="h-full pt-0" data-reader-content>
+        {book.fileType === 'epub' && (
+          <EpubRenderer book={book} onTocLoaded={handleTocLoaded} />
+        )}
+        {book.fileType === 'pdf' && (
+          <div className="flex items-center justify-center h-full text-[var(--text-secondary)]">
+            PDF support coming soon
+          </div>
+        )}
+      </div>
+
+      {/* Bottom bar */}
+      <ReaderBottomBar
+        visible={isUIVisible}
+        onPrevPage={handlePrevPage}
+        onNextPage={handleNextPage}
+      />
+
+      {/* Table of Contents */}
+      <TableOfContents
+        isOpen={isTocOpen}
+        onClose={() => setTocOpen(false)}
+        toc={toc}
+        onNavigate={handleNavigate}
+      />
+
+      {/* Reader Settings */}
+      <ReaderSettings
+        isOpen={isSettingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
+
+      {/* Bookmarks Panel */}
+      <BookmarksPanel
+        book={book}
+        isOpen={isBookmarksOpen}
+        onClose={() => setBookmarksOpen(false)}
+        onNavigate={handleNavigate}
+      />
+
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-primary)]/80 z-50">
+          <div className="text-center">
+            <div className="animate-spin w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-[var(--text-secondary)]">Loading book...</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
