@@ -11,12 +11,6 @@ export interface ImportedFile {
 
 export async function openFileDialog(): Promise<ImportedFile | null> {
   try {
-    // Check if we're running in Tauri
-    if (typeof window !== 'undefined' && !('__TAURI__' in window)) {
-      alert('File import only works in the Tauri desktop app.\n\nPlease run "npm run tauri:dev" and use the desktop window that opens.');
-      return null;
-    }
-
     const selected = await open({
       multiple: false,
       filters: [
