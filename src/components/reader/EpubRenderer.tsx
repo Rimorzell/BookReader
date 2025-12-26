@@ -90,8 +90,32 @@ export const EpubRenderer = forwardRef<EpubRendererHandle, EpubRendererProps>(fu
           applyStyles(rendition);
         });
 
-        // Handle clicks for navigation
-        rendition.on('click', handleClick as unknown as (...args: unknown[]) => void);
+        // Handle clicks for navigation inside the epub iframe
+        rendition.on('click', ((e: MouseEvent) => {
+          const iframe = containerRef.current?.querySelector('iframe');
+          if (!iframe) return;
+
+          const iframeWidth = iframe.clientWidth;
+          const clickX = e.clientX;
+
+          // Click zones: left third = prev, right third = next
+          if (clickX < iframeWidth / 3) {
+            rendition.prev();
+          } else if (clickX > (2 * iframeWidth) / 3) {
+            rendition.next();
+          }
+        }) as unknown as (...args: unknown[]) => void);
+
+        // Handle keyboard events inside the epub iframe
+        rendition.on('keydown', ((e: KeyboardEvent) => {
+          if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+            e.preventDefault();
+            rendition.next();
+          } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+            e.preventDefault();
+            rendition.prev();
+          }
+        }) as unknown as (...args: unknown[]) => void);
 
         // Start reading session
         startSession();
@@ -168,22 +192,6 @@ export const EpubRenderer = forwardRef<EpubRendererHandle, EpubRendererProps>(fu
       setCurrentChapter(chapter.label);
     }
   }, [book.id, updateLocation, updateReadingProgress, setCurrentChapter]);
-
-  const handleClick = useCallback((e: MouseEvent) => {
-    const container = containerRef.current;
-    if (!container || !renditionRef.current) return;
-
-    const rect = container.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = rect.width;
-
-    // Click zones: left third = prev, right third = next
-    if (x < width / 3) {
-      renditionRef.current.prev();
-    } else if (x > (2 * width) / 3) {
-      renditionRef.current.next();
-    }
-  }, []);
 
   // Navigation methods exposed via ref
   const goNext = useCallback(() => {

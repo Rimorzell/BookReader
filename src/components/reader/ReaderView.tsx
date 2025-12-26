@@ -195,22 +195,22 @@ export function ReaderView() {
         )}
       </div>
 
-      {/* Always-visible navigation zones */}
+      {/* Always-visible navigation zones - full height for easy clicking */}
       <button
         onClick={handlePrevPage}
-        className="absolute left-0 top-1/2 -translate-y-1/2 w-16 h-32 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-gradient-to-r from-black/20 to-transparent"
+        className="absolute left-0 top-0 bottom-0 w-20 z-30 flex items-center justify-start pl-2 opacity-30 hover:opacity-100 transition-opacity bg-gradient-to-r from-black/10 to-transparent hover:from-black/30"
         aria-label="Previous page"
       >
-        <svg className="w-8 h-8 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
       </button>
       <button
         onClick={handleNextPage}
-        className="absolute right-0 top-1/2 -translate-y-1/2 w-16 h-32 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-gradient-to-l from-black/20 to-transparent"
+        className="absolute right-0 top-0 bottom-0 w-20 z-30 flex items-center justify-end pr-2 opacity-30 hover:opacity-100 transition-opacity bg-gradient-to-l from-black/10 to-transparent hover:from-black/30"
         aria-label="Next page"
       >
-        <svg className="w-8 h-8 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </button>
