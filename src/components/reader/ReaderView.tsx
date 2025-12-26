@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { EpubRenderer } from './EpubRenderer';
+import { EpubRenderer, type EpubRendererHandle } from './EpubRenderer';
 import { ReaderTopBar } from './ReaderTopBar';
 import { ReaderBottomBar } from './ReaderBottomBar';
 import { TableOfContents } from './TableOfContents';
@@ -31,7 +31,7 @@ export function ReaderView() {
   } = useReaderStore();
 
   const [toc, setToc] = useState<TocItem[]>([]);
-  const rendererRef = useRef<{ goNext: () => void; goPrev: () => void; goToLocation: (cfi: string) => void } | null>(null);
+  const rendererRef = useRef<EpubRendererHandle>(null);
 
   const book = books.find((b) => b.id === bookId);
 
@@ -101,6 +101,25 @@ export function ReaderView() {
     }
   }, [book, isLoading, navigate]);
 
+  // Handle Escape key to close panels or return to library
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isTocOpen) {
+          setTocOpen(false);
+        } else if (isSettingsOpen) {
+          setSettingsOpen(false);
+        } else if (isBookmarksOpen) {
+          setBookmarksOpen(false);
+        } else {
+          navigate('/');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTocOpen, isSettingsOpen, isBookmarksOpen, setTocOpen, setSettingsOpen, setBookmarksOpen, navigate]);
+
   if (!book) {
     return (
       <div className="flex items-center justify-center h-full bg-[var(--bg-primary)]">
@@ -167,7 +186,7 @@ export function ReaderView() {
       {/* Reader content */}
       <div className="h-full pt-0" data-reader-content>
         {book.fileType === 'epub' && (
-          <EpubRenderer book={book} onTocLoaded={handleTocLoaded} />
+          <EpubRenderer ref={rendererRef} book={book} onTocLoaded={handleTocLoaded} />
         )}
         {book.fileType === 'pdf' && (
           <div className="flex items-center justify-center h-full text-[var(--text-secondary)]">
@@ -175,6 +194,26 @@ export function ReaderView() {
           </div>
         )}
       </div>
+
+      {/* Always-visible navigation zones */}
+      <button
+        onClick={handlePrevPage}
+        className="absolute left-0 top-1/2 -translate-y-1/2 w-16 h-32 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-gradient-to-r from-black/20 to-transparent"
+        aria-label="Previous page"
+      >
+        <svg className="w-8 h-8 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <button
+        onClick={handleNextPage}
+        className="absolute right-0 top-1/2 -translate-y-1/2 w-16 h-32 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-gradient-to-l from-black/20 to-transparent"
+        aria-label="Next page"
+      >
+        <svg className="w-8 h-8 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
 
       {/* Bottom bar */}
       <ReaderBottomBar

@@ -1,16 +1,22 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
 import ePub, { type Book as EpubBook, type Rendition, type Location } from 'epubjs';
 import { useReaderStore, useSettingsStore, useLibraryStore } from '../../stores';
 import type { Book, TocItem } from '../../types';
 import { getTableOfContents } from '../../utils/epubParser';
 import { readBookFile } from '../../utils/fileSystem';
 
+export interface EpubRendererHandle {
+  goNext: () => void;
+  goPrev: () => void;
+  goToLocation: (cfi: string) => void;
+}
+
 interface EpubRendererProps {
   book: Book;
   onTocLoaded: (toc: TocItem[]) => void;
 }
 
-export function EpubRenderer({ book, onTocLoaded }: EpubRendererProps) {
+export const EpubRenderer = forwardRef<EpubRendererHandle, EpubRendererProps>(function EpubRenderer({ book, onTocLoaded }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const epubRef = useRef<EpubBook | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
@@ -188,6 +194,17 @@ export function EpubRenderer({ book, onTocLoaded }: EpubRendererProps) {
     renditionRef.current?.prev();
   }, []);
 
+  const goToLocation = useCallback((cfi: string) => {
+    renditionRef.current?.display(cfi);
+  }, []);
+
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    goNext,
+    goPrev,
+    goToLocation,
+  }), [goNext, goPrev, goToLocation]);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -213,7 +230,7 @@ export function EpubRenderer({ book, onTocLoaded }: EpubRendererProps) {
       }}
     />
   );
-}
+});
 
 function getThemeColors(theme: string) {
   switch (theme) {
@@ -244,9 +261,3 @@ function getThemeColors(theme: string) {
   }
 }
 
-// Export navigation methods for parent component use
-export interface EpubRendererRef {
-  goNext: () => void;
-  goPrev: () => void;
-  goToLocation: (cfi: string) => void;
-}
