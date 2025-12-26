@@ -34,11 +34,33 @@ export const EpubRenderer = forwardRef<EpubRendererHandle, EpubRendererProps>(fu
   const { updateReadingProgress } = useLibraryStore();
   const readerSettings = settings.reader;
 
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Initialize the EPUB
+  // Get container dimensions
   useEffect(() => {
-    if (!containerRef.current || isInitialized) return;
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDimensions({ width: rect.width, height: rect.height });
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+
+    // Also check after a short delay to ensure container is rendered
+    const timeout = setTimeout(updateDimensions, 100);
+
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  // Initialize the EPUB when we have dimensions
+  useEffect(() => {
+    if (!containerRef.current || dimensions.width === 0 || dimensions.height === 0) return;
+    if (epubRef.current) return; // Already initialized
 
     const initEpub = async () => {
       setLoading(true);
@@ -59,67 +81,76 @@ export const EpubRenderer = forwardRef<EpubRendererHandle, EpubRendererProps>(fu
         const toc = await getTableOfContents(epub);
         onTocLoaded(toc);
 
-        // Create rendition
+        // Create rendition with explicit pixel dimensions
         const rendition = epub.renderTo(containerRef.current!, {
-          width: '100%',
-          height: '100%',
-          flow: readerSettings.viewMode === 'scroll' ? 'scrolled' : 'paginated',
-          spread: readerSettings.twoPageSpread ? 'auto' : 'none',
+          width: dimensions.width,
+          height: dimensions.height,
+          spread: 'none',
+          flow: 'paginated',
         });
 
         renditionRef.current = rendition;
 
-        // Apply styles
+        // Apply initial styles
         applyStyles(rendition);
 
-        // Generate locations for progress tracking
-        await epub.locations.generate(1024);
-        setTotalLocations(epub.locations.length());
-
-        // Display at last position or beginning
+        // Display the book (at last position or beginning)
         if (book.currentLocation) {
           await rendition.display(book.currentLocation);
         } else {
           await rendition.display();
         }
 
-        // Set up event handlers
-        rendition.on('locationChanged', handleLocationChange as unknown as (...args: unknown[]) => void);
+        // Generate locations for progress tracking (do this after display)
+        try {
+          await epub.locations.generate(1600);
+          setTotalLocations(epub.locations.length());
+        } catch (locError) {
+          console.warn('Could not generate locations:', locError);
+        }
 
+        // Set up event handlers
+        rendition.on('relocated', ((location: Location) => {
+          if (!location.start) return;
+
+          const cfi = location.start.cfi;
+          let progress = 0;
+
+          try {
+            const percentage = epub.locations.percentageFromCfi(cfi);
+            progress = Math.round((percentage || 0) * 100);
+          } catch {
+            // Locations might not be ready yet
+          }
+
+          const currentPage = location.start.displayed?.page || 1;
+          const totalPages = location.start.displayed?.total || 1;
+
+          updateLocation(cfi, currentPage, totalPages, progress);
+          updateReadingProgress(book.id, cfi, progress);
+
+          // Get chapter title
+          const chapter = epub.navigation?.toc.find(
+            (item) => {
+              try {
+                return epub.spine.get(item.href)?.cfiBase === cfi.split('!')[0];
+              } catch {
+                return false;
+              }
+            }
+          );
+          if (chapter) {
+            setCurrentChapter(chapter.label);
+          }
+        }) as unknown as (...args: unknown[]) => void);
+
+        // Handle rendered event to reapply styles
         rendition.on('rendered', () => {
           applyStyles(rendition);
         });
 
-        // Handle clicks for navigation inside the epub iframe
-        rendition.on('click', ((e: MouseEvent) => {
-          const iframe = containerRef.current?.querySelector('iframe');
-          if (!iframe) return;
-
-          const iframeWidth = iframe.clientWidth;
-          const clickX = e.clientX;
-
-          // Click zones: left third = prev, right third = next
-          if (clickX < iframeWidth / 3) {
-            rendition.prev();
-          } else if (clickX > (2 * iframeWidth) / 3) {
-            rendition.next();
-          }
-        }) as unknown as (...args: unknown[]) => void);
-
-        // Handle keyboard events inside the epub iframe
-        rendition.on('keydown', ((e: KeyboardEvent) => {
-          if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
-            e.preventDefault();
-            rendition.next();
-          } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-            e.preventDefault();
-            rendition.prev();
-          }
-        }) as unknown as (...args: unknown[]) => void);
-
         // Start reading session
         startSession();
-        setIsInitialized(true);
         setLoading(false);
       } catch (error) {
         console.error('Failed to load EPUB:', error);
@@ -133,9 +164,19 @@ export const EpubRenderer = forwardRef<EpubRendererHandle, EpubRendererProps>(fu
     return () => {
       if (epubRef.current) {
         epubRef.current.destroy();
+        epubRef.current = null;
+        renditionRef.current = null;
       }
     };
-  }, [book.filePath]);
+  }, [book.filePath, dimensions.width, dimensions.height]);
+
+  // Handle resize - update rendition size
+  useEffect(() => {
+    if (renditionRef.current && dimensions.width > 0 && dimensions.height > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (renditionRef.current as any).resize(dimensions.width, dimensions.height);
+    }
+  }, [dimensions]);
 
   // Apply reader settings when they change
   useEffect(() => {
@@ -145,65 +186,51 @@ export const EpubRenderer = forwardRef<EpubRendererHandle, EpubRendererProps>(fu
   }, [readerSettings]);
 
   const applyStyles = useCallback((rendition: Rendition) => {
-    // Get theme colors
     const themeColors = getThemeColors(readerSettings.theme);
 
     rendition.themes.default({
-      body: {
-        'font-family': `${readerSettings.fontFamily} !important`,
+      'body': {
+        'font-family': `"${readerSettings.fontFamily}", serif !important`,
         'font-size': `${readerSettings.fontSize}px !important`,
         'line-height': `${readerSettings.lineHeight} !important`,
-        'letter-spacing': `${readerSettings.letterSpacing}px !important`,
-        color: `${themeColors.text} !important`,
+        'color': `${themeColors.text} !important`,
         'background-color': `${themeColors.background} !important`,
-        padding: `${readerSettings.marginVertical}px ${readerSettings.marginHorizontal}px !important`,
-        'max-width': `${readerSettings.maxWidth}px`,
-        margin: '0 auto',
+        'padding': `20px !important`,
       },
-      p: {
+      'p': {
         'text-align': `${readerSettings.textAlign} !important`,
         'margin-bottom': `${readerSettings.paragraphSpacing}em !important`,
       },
-      a: {
-        color: `${themeColors.link} !important`,
+      'a': {
+        'color': `${themeColors.link} !important`,
+      },
+      'h1, h2, h3, h4, h5, h6': {
+        'color': `${themeColors.text} !important`,
+      },
+      'img': {
+        'max-width': '100% !important',
+        'height': 'auto !important',
       },
     });
   }, [readerSettings]);
 
-  const handleLocationChange = useCallback((location: Location) => {
-    if (!epubRef.current || !location.start) return;
-
-    const cfi = location.start.cfi;
-    const percentage = epubRef.current.locations.percentageFromCfi(cfi);
-    const progress = Math.round(percentage * 100);
-
-    // Get current page info
-    const currentPage = location.start.displayed?.page || 1;
-    const totalPages = location.start.displayed?.total || 1;
-
-    updateLocation(cfi, currentPage, totalPages, progress);
-    updateReadingProgress(book.id, cfi, progress);
-
-    // Get chapter title
-    const chapter = epubRef.current.navigation?.toc.find(
-      (item) => epubRef.current!.spine.get(item.href)?.cfiBase === location.start.cfi.split('!')[0]
-    );
-    if (chapter) {
-      setCurrentChapter(chapter.label);
-    }
-  }, [book.id, updateLocation, updateReadingProgress, setCurrentChapter]);
-
-  // Navigation methods exposed via ref
+  // Navigation methods
   const goNext = useCallback(() => {
-    renditionRef.current?.next();
+    if (renditionRef.current) {
+      renditionRef.current.next();
+    }
   }, []);
 
   const goPrev = useCallback(() => {
-    renditionRef.current?.prev();
+    if (renditionRef.current) {
+      renditionRef.current.prev();
+    }
   }, []);
 
   const goToLocation = useCallback((cfi: string) => {
-    renditionRef.current?.display(cfi);
+    if (renditionRef.current) {
+      renditionRef.current.display(cfi);
+    }
   }, []);
 
   // Expose methods to parent via ref
@@ -213,10 +240,15 @@ export const EpubRenderer = forwardRef<EpubRendererHandle, EpubRendererProps>(fu
     goToLocation,
   }), [goNext, goPrev, goToLocation]);
 
-  // Keyboard navigation
+  // Keyboard navigation on window
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+      // Don't handle if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
         e.preventDefault();
         goNext();
       } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
@@ -229,12 +261,14 @@ export const EpubRenderer = forwardRef<EpubRendererHandle, EpubRendererProps>(fu
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goPrev]);
 
+  const themeColors = getThemeColors(readerSettings.theme);
+
   return (
     <div
       ref={containerRef}
-      className="w-full h-full reader-content"
+      className="w-full h-full"
       style={{
-        backgroundColor: getThemeColors(readerSettings.theme).background,
+        backgroundColor: themeColors.background,
       }}
     />
   );
@@ -268,4 +302,3 @@ function getThemeColors(theme: string) {
       };
   }
 }
-
