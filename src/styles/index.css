@@ -1,0 +1,312 @@
+@import "tailwindcss";
+
+/* Custom CSS Properties for theming */
+:root {
+  /* Light theme (default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f7;
+  --bg-tertiary: #e5e5e7;
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-muted: #86868b;
+  --accent: #007aff;
+  --accent-hover: #0066d6;
+  --border: #d2d2d7;
+  --shadow: rgba(0, 0, 0, 0.1);
+  --shadow-hover: rgba(0, 0, 0, 0.15);
+
+  /* Reader specific */
+  --reader-bg: #ffffff;
+  --reader-text: #1d1d1f;
+  --reader-link: #007aff;
+
+  /* UI */
+  --sidebar-width: 280px;
+  --header-height: 56px;
+  --card-radius: 12px;
+  --button-radius: 8px;
+}
+
+[data-theme="sepia"] {
+  --bg-primary: #f8f3e8;
+  --bg-secondary: #f0ebe0;
+  --bg-tertiary: #e5e0d5;
+  --text-primary: #433422;
+  --text-secondary: #6b5c48;
+  --text-muted: #8a7b67;
+  --accent: #b5651d;
+  --accent-hover: #9a5617;
+  --border: #d4c9b8;
+  --shadow: rgba(67, 52, 34, 0.1);
+  --shadow-hover: rgba(67, 52, 34, 0.15);
+
+  --reader-bg: #f8f3e8;
+  --reader-text: #433422;
+  --reader-link: #b5651d;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #1c1c1e;
+  --bg-secondary: #2c2c2e;
+  --bg-tertiary: #3a3a3c;
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1a6;
+  --text-muted: #6e6e73;
+  --accent: #0a84ff;
+  --accent-hover: #409cff;
+  --border: #38383a;
+  --shadow: rgba(0, 0, 0, 0.3);
+  --shadow-hover: rgba(0, 0, 0, 0.4);
+
+  --reader-bg: #1c1c1e;
+  --reader-text: #f5f5f7;
+  --reader-link: #0a84ff;
+}
+
+[data-theme="black"] {
+  --bg-primary: #000000;
+  --bg-secondary: #1c1c1e;
+  --bg-tertiary: #2c2c2e;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1a6;
+  --text-muted: #6e6e73;
+  --accent: #0a84ff;
+  --accent-hover: #409cff;
+  --border: #38383a;
+  --shadow: rgba(255, 255, 255, 0.05);
+  --shadow-hover: rgba(255, 255, 255, 0.1);
+
+  --reader-bg: #000000;
+  --reader-text: #ffffff;
+  --reader-link: #0a84ff;
+}
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+/* Smooth transitions for theme changes */
+body,
+.transition-theme {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--text-muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-secondary);
+}
+
+/* Hide scrollbar when not hovering */
+.hide-scrollbar::-webkit-scrollbar {
+  opacity: 0;
+}
+
+.hide-scrollbar:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+/* Typography for reader */
+.reader-content {
+  font-family: var(--reader-font, Georgia, serif);
+  font-size: var(--reader-font-size, 18px);
+  line-height: var(--reader-line-height, 1.8);
+  letter-spacing: var(--reader-letter-spacing, 0);
+  text-align: var(--reader-text-align, left);
+  color: var(--reader-text);
+  background-color: var(--reader-bg);
+}
+
+.reader-content p {
+  margin-bottom: var(--reader-paragraph-spacing, 1.2em);
+}
+
+.reader-content a {
+  color: var(--reader-link);
+  text-decoration: none;
+}
+
+.reader-content a:hover {
+  text-decoration: underline;
+}
+
+/* Book card hover effect */
+.book-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.book-card:hover {
+  transform: scale(1.02);
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Slide up animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Page turn animations */
+@keyframes pageSlideLeft {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes pageSlideRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes pageSlideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pageSlideInFromLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Button base styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: var(--button-radius);
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--border);
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-content {
+  background-color: var(--bg-primary);
+  border-radius: var(--card-radius);
+  box-shadow: 0 20px 40px var(--shadow);
+  max-width: 90%;
+  max-height: 90%;
+  overflow: auto;
+}
+
+/* Epub.js container styles */
+#epub-viewer {
+  height: 100%;
+  width: 100%;
+}
+
+#epub-viewer iframe {
+  border: none;
+}
