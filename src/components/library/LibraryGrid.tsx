@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookCard } from './BookCard';
 import { EmptyState } from '../common';
 import { useLibraryStore, useSettingsStore } from '../../stores';
+import { UI_CONSTANTS } from '../../constants';
 import type { Book } from '../../types';
 
 interface LibraryGridProps {
@@ -156,39 +157,109 @@ interface ContextMenuProps {
 
 function ContextMenu({ book, x, y, onClose }: ContextMenuProps) {
   const { removeBook, setBookStatus } = useLibraryStore();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [focusIndex, setFocusIndex] = useState(0);
+  const menuItems = useRef<HTMLButtonElement[]>([]);
 
-  const handleAction = (action: () => void) => {
+  // Calculate bounded position
+  const boundedX = Math.min(x, window.innerWidth - UI_CONSTANTS.CONTEXT_MENU_WIDTH - UI_CONSTANTS.CONTEXT_MENU_MARGIN);
+  const boundedY = Math.min(y, window.innerHeight - UI_CONSTANTS.CONTEXT_MENU_HEIGHT - UI_CONSTANTS.CONTEXT_MENU_MARGIN);
+
+  const handleAction = useCallback((action: () => void) => {
     action();
     onClose();
+  }, [onClose]);
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault();
+          onClose();
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          setFocusIndex((prev) => (prev + 1) % menuItems.current.length);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setFocusIndex((prev) => (prev - 1 + menuItems.current.length) % menuItems.current.length);
+          break;
+        case 'Tab':
+          e.preventDefault();
+          if (e.shiftKey) {
+            setFocusIndex((prev) => (prev - 1 + menuItems.current.length) % menuItems.current.length);
+          } else {
+            setFocusIndex((prev) => (prev + 1) % menuItems.current.length);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  // Focus current item
+  useEffect(() => {
+    menuItems.current[focusIndex]?.focus();
+  }, [focusIndex]);
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  const setItemRef = (index: number) => (el: HTMLButtonElement | null) => {
+    if (el) menuItems.current[index] = el;
   };
 
   return (
     <div
+      ref={menuRef}
       className="fixed z-50 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg shadow-xl py-1 min-w-[180px]"
-      style={{ left: x, top: y }}
+      style={{ left: boundedX, top: boundedY }}
+      role="menu"
+      aria-label={`Actions for ${book.title}`}
     >
       <button
+        ref={setItemRef(0)}
         onClick={() => handleAction(() => setBookStatus(book.id, 'reading'))}
-        className="w-full px-4 py-2 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
+        className="w-full px-4 py-2 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] focus:bg-[var(--bg-tertiary)] focus:outline-none"
+        role="menuitem"
       >
         Mark as Reading
       </button>
       <button
+        ref={setItemRef(1)}
         onClick={() => handleAction(() => setBookStatus(book.id, 'finished'))}
-        className="w-full px-4 py-2 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
+        className="w-full px-4 py-2 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] focus:bg-[var(--bg-tertiary)] focus:outline-none"
+        role="menuitem"
       >
         Mark as Finished
       </button>
       <button
+        ref={setItemRef(2)}
         onClick={() => handleAction(() => setBookStatus(book.id, 'want-to-read'))}
-        className="w-full px-4 py-2 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
+        className="w-full px-4 py-2 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] focus:bg-[var(--bg-tertiary)] focus:outline-none"
+        role="menuitem"
       >
         Mark as Want to Read
       </button>
-      <div className="border-t border-[var(--border)] my-1" />
+      <div className="border-t border-[var(--border)] my-1" role="separator" />
       <button
+        ref={setItemRef(3)}
         onClick={() => handleAction(() => removeBook(book.id))}
-        className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-[var(--bg-tertiary)]"
+        className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-[var(--bg-tertiary)] focus:bg-[var(--bg-tertiary)] focus:outline-none"
+        role="menuitem"
       >
         Remove from Library
       </button>

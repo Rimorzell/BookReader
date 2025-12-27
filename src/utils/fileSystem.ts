@@ -16,7 +16,7 @@ export async function openFileDialog(): Promise<ImportedFile | null> {
       filters: [
         {
           name: 'E-Books',
-          extensions: ['epub', 'pdf'],
+          extensions: ['epub'],
         },
       ],
     });
@@ -25,12 +25,19 @@ export async function openFileDialog(): Promise<ImportedFile | null> {
 
     // Tauri v2 dialog returns string | string[] | null
     const path = selected as string;
+
+    // Validate file still exists before reading
+    const fileExists = await exists(path);
+    if (!fileExists) {
+      throw new Error('Selected file no longer exists. It may have been moved or deleted.');
+    }
+
     const data = await readFile(path);
     const extension = path.split('.').pop()?.toLowerCase();
     const name = path.split(/[/\\]/).pop() || 'Unknown';
 
-    if (extension !== 'epub' && extension !== 'pdf') {
-      throw new Error('Unsupported file type');
+    if (extension !== 'epub') {
+      throw new Error('Unsupported file type. Only EPUB files are currently supported.');
     }
 
     return {
@@ -41,7 +48,7 @@ export async function openFileDialog(): Promise<ImportedFile | null> {
     };
   } catch (error) {
     console.error('Failed to open file:', error);
-    return null;
+    throw error;
   }
 }
 
@@ -52,7 +59,7 @@ export async function openMultipleFilesDialog(): Promise<ImportedFile[]> {
       filters: [
         {
           name: 'E-Books',
-          extensions: ['epub', 'pdf'],
+          extensions: ['epub'],
         },
       ],
     });
@@ -69,7 +76,7 @@ export async function openMultipleFilesDialog(): Promise<ImportedFile[]> {
       const extension = path.split('.').pop()?.toLowerCase();
       const name = path.split(/[/\\]/).pop() || 'Unknown';
 
-      if (extension === 'epub' || extension === 'pdf') {
+      if (extension === 'epub') {
         files.push({
           name,
           path,
@@ -82,12 +89,24 @@ export async function openMultipleFilesDialog(): Promise<ImportedFile[]> {
     return files;
   } catch (error) {
     console.error('Failed to open files:', error);
-    return [];
+    throw error;
   }
 }
 
 export async function readBookFile(path: string): Promise<Uint8Array> {
+  const fileExists = await exists(path);
+  if (!fileExists) {
+    throw new Error('Book file not found. It may have been moved or deleted.');
+  }
   return await readFile(path);
+}
+
+export async function validateBookFile(path: string): Promise<boolean> {
+  try {
+    return await exists(path);
+  } catch {
+    return false;
+  }
 }
 
 export async function ensureAppDataDir(): Promise<void> {

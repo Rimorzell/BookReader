@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { v4 as uuidv4 } from 'uuid';
 import type { AppSettings, ReaderSettings, Theme, CustomTheme } from '../types';
 import { defaultAppSettings, defaultReaderSettings } from '../types';
 
@@ -201,7 +202,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       // Custom themes
       addCustomTheme: (theme) => {
-        const id = `custom-${Date.now()}`;
+        const id = `custom-${uuidv4()}`;
         set((state) => ({
           settings: {
             ...state.settings,

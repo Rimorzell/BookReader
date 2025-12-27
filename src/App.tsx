@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import { LibraryView } from './components/library';
 import { ReaderView } from './components/reader';
 import { SettingsView } from './components/settings';
+import { ToastContainer, ErrorBoundary } from './components/common';
 import { useSettingsStore } from './stores';
 import { useEffect } from 'react';
 
@@ -14,13 +15,16 @@ function App() {
   }, [settings.reader.theme]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[var(--bg-primary)]">
-      <Routes>
-        <Route path="/" element={<LibraryView />} />
-        <Route path="/reader/:bookId" element={<ReaderView />} />
-        <Route path="/settings" element={<SettingsView />} />
-      </Routes>
-    </div>
+    <ErrorBoundary>
+      <div className="h-screen w-screen overflow-hidden bg-[var(--bg-primary)]">
+        <Routes>
+          <Route path="/" element={<LibraryView />} />
+          <Route path="/reader/:bookId" element={<ReaderView />} />
+          <Route path="/settings" element={<SettingsView />} />
+        </Routes>
+        <ToastContainer />
+      </div>
+    </ErrorBoundary>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useReaderStore, useSettingsStore } from '../../stores';
 import { formatTimeRemaining } from '../../utils';
+import { UI_CONSTANTS } from '../../constants';
 
 interface ReaderBottomBarProps {
   visible: boolean;
@@ -33,10 +34,10 @@ export function ReaderBottomBar({
   const handleProgressKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
       e.preventDefault();
-      onScrubProgress(Math.max(0, progress - 2));
+      onScrubProgress(Math.max(0, progress - UI_CONSTANTS.PROGRESS_STEP));
     } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
       e.preventDefault();
-      onScrubProgress(Math.min(100, progress + 2));
+      onScrubProgress(Math.min(100, progress + UI_CONSTANTS.PROGRESS_STEP));
     }
   };
   return (
@@ -63,9 +64,11 @@ export function ReaderBottomBar({
             className="h-2 bg-[var(--bg-tertiary)] rounded-full overflow-hidden cursor-pointer relative group"
             role="slider"
             tabIndex={0}
+            aria-label="Reading progress"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(progress)}
+            aria-valuetext={`${Math.round(progress)}% complete, page ${currentPage} of ${totalPages}`}
             onClick={handleProgressScrub}
             onKeyDown={handleProgressKeyDown}
           >

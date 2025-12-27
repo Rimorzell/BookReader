@@ -161,9 +161,9 @@ export async function searchInBook(
 
   try {
     await book.ready;
-    const spine = book.spine;
+    const { spineItems } = book.spine;
 
-    for (const section of (spine as unknown as { spineItems: { load: (book: EpubBook) => Promise<{ find: (query: string) => { cfi: string; excerpt: string }[] }> }[] }).spineItems) {
+    for (const section of spineItems) {
       const contents = await section.load(book);
       const found = contents.find(query);
       results.push(...found);
