@@ -8,10 +8,9 @@ interface BookmarksPanelProps {
   onNavigate: (location: string) => void;
 }
 export function BookmarksPanel({ book, isOpen, onClose, onNavigate }: BookmarksPanelProps) {
-  const { getBookBookmarks, addBookmark, removeBookmark, getBookHighlights } = useLibraryStore();
+  const { getBookBookmarks, addBookmark, removeBookmark } = useLibraryStore();
   const { currentLocation } = useReaderStore();
   const bookmarks = getBookBookmarks(book.id);
-  const highlights = getBookHighlights(book.id);
   const handleAddBookmark = () => {
     if (currentLocation) {
       addBookmark(book.id, currentLocation, 'Bookmark');
@@ -74,46 +73,31 @@ export function BookmarksPanel({ book, isOpen, onClose, onNavigate }: BookmarksP
         </div>
         {/* Content */}
         <div className="overflow-y-auto h-[calc(100%-64px)]">
-          {/* Bookmarks */}
-          <section className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
+          <section className="p-4 space-y-3">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddBookmark();
+              }}
+              disabled={isCurrentLocationBookmarked || !currentLocation}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+              {isCurrentLocationBookmarked ? 'Page Already Bookmarked' : 'Bookmark This Page'}
+            </button>
+
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
               Bookmarks ({bookmarks.length})
             </h3>
+
             {bookmarks.length === 0 ? (
-              <div className="py-4">
-                <p className="text-sm text-[var(--text-secondary)] mb-4">
-                  No bookmarks yet.
-                </p>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddBookmark();
-                  }}
-                  disabled={!currentLocation}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
-                  Bookmark This Page
-                </button>
-              </div>
+              <p className="text-sm text-[var(--text-secondary)] py-2">
+                No bookmarks yet. Navigate to a page and add one.
+              </p>
             ) : (
               <div className="space-y-2">
-                {/* Add bookmark button at top of list */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddBookmark();
-                  }}
-                  disabled={isCurrentLocationBookmarked || !currentLocation}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[var(--border)] disabled:hover:text-[var(--text-secondary)] transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  {isCurrentLocationBookmarked ? 'Page Already Bookmarked' : 'Bookmark This Page'}
-                </button>
                 {bookmarks.map((bookmark) => (
                   <div
                     key={bookmark.id}
@@ -153,56 +137,8 @@ export function BookmarksPanel({ book, isOpen, onClose, onNavigate }: BookmarksP
               </div>
             )}
           </section>
-          {/* Highlights */}
-          <section className="p-4 border-t border-[var(--border)]">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
-              Highlights ({highlights.length})
-            </h3>
-            {highlights.length === 0 ? (
-              <p className="text-sm text-[var(--text-secondary)] py-4">
-                No highlights yet. Select text in the book to highlight.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {highlights.map((highlight) => (
-                  <div
-                    key={highlight.id}
-                    className="p-3 rounded-lg bg-[var(--bg-secondary)] cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
-                    onClick={() => onNavigate(highlight.startLocation)}
-                  >
-                    <div
-                      className="text-sm text-[var(--text-primary)] line-clamp-3 border-l-4 pl-3"
-                      style={{
-                        borderColor: getHighlightColor(highlight.color),
-                      }}
-                    >
-                      {highlight.text}
-                    </div>
-                    {highlight.note && (
-                      <p className="text-xs text-[var(--text-secondary)] mt-2 italic">
-                        {highlight.note}
-                      </p>
-                    )}
-                    <p className="text-xs text-[var(--text-muted)] mt-1">
-                      {formatDate(highlight.dateCreated)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
         </div>
       </div>
     </>
   );
-}
-function getHighlightColor(color: string): string {
-  const colors: Record<string, string> = {
-    yellow: '#fef08a',
-    green: '#bbf7d0',
-    blue: '#bfdbfe',
-    pink: '#fbcfe8',
-    purple: '#ddd6fe',
-  };
-  return colors[color] || colors.yellow;
 }
