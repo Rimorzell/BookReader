@@ -4,7 +4,7 @@ import { useReaderStore, useSettingsStore, useLibraryStore, toast } from '../../
 import type { Book, TocItem } from '../../types';
 import { getTableOfContents } from '../../utils/epubParser';
 import { readBookFile } from '../../utils/fileSystem';
-import { getThemeColors, UI_CONSTANTS } from '../../constants';
+import { getThemeColors } from '../../constants';
 
 interface EpubRendererProps {
   book: Book;
@@ -131,17 +131,39 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       }
     };
 
+    // Track mouse state for distinguishing taps from drags/selections
+    let mouseDownTime = 0;
+    let mouseDownX = 0;
+    let mouseDownY = 0;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      mouseDownTime = Date.now();
+      mouseDownX = e.clientX;
+      mouseDownY = e.clientY;
+    };
+
     const handleClick = (e: MouseEvent) => {
       if (!currentContainer || !renditionRef.current) return;
+
+      // Only navigate on quick taps (< 300ms) with minimal movement (< 10px)
+      const clickDuration = Date.now() - mouseDownTime;
+      const moveDistance = Math.sqrt(
+        Math.pow(e.clientX - mouseDownX, 2) + Math.pow(e.clientY - mouseDownY, 2)
+      );
+
+      // Ignore if it was a long press or drag (text selection, etc.)
+      if (clickDuration > 300 || moveDistance > 10) {
+        return;
+      }
 
       const rect = currentContainer.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const width = rect.width;
 
-      // Click zones: left third = prev, right third = next
-      if (x < width * UI_CONSTANTS.CLICK_ZONE_PREV) {
+      // Click zones: left 25% = prev, right 25% = next (narrower zones)
+      if (x < width * 0.25) {
         renditionRef.current.prev();
-      } else if (x > width * UI_CONSTANTS.CLICK_ZONE_NEXT) {
+      } else if (x > width * 0.75) {
         renditionRef.current.next();
       }
     };
@@ -184,16 +206,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         // Apply styles
         applyStyles(rendition);
 
-        // Generate locations for progress tracking
-        await epub.locations.generate(1024);
-        if (!isActive) {
-          epub.destroy();
-          return;
-        }
-
-        setTotalLocations(epub.locations.length());
-
-        // Display at last position or beginning
+        // Display at last position or beginning FIRST (before generating locations)
         if (book.currentLocation) {
           await rendition.display(book.currentLocation);
         } else {
@@ -205,14 +218,23 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
           return;
         }
 
-        // Set up event handlers
+        // Set up event handlers immediately so user can start reading
         rendition.on('locationChanged', handleLocationChange);
         rendition.on('rendered', () => applyStyles(rendition));
+        rendition.on('mousedown', handleMouseDown);
         rendition.on('click', handleClick);
 
-        // Start reading session
+        // Start reading session and hide loading - book is now visible
         startSession();
         setLoading(false);
+
+        // Generate locations in background (for progress tracking)
+        // Use larger chunk size (2048) for faster generation
+        epub.locations.generate(2048).then(() => {
+          if (isActive) {
+            setTotalLocations(epub.locations.length());
+          }
+        });
       } catch (error) {
         if (!isActive) return;
         console.error('Failed to load EPUB:', error);

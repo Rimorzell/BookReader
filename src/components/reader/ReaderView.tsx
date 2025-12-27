@@ -84,6 +84,41 @@ export function ReaderView() {
     }
   }, [toggleUI, resetHideTimeout]);
 
+  // Keyboard shortcuts for quick access
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case 's':
+          e.preventDefault();
+          setSettingsOpen(!isSettingsOpen);
+          break;
+        case 't':
+          e.preventDefault();
+          setTocOpen(!isTocOpen);
+          break;
+        case 'b':
+          e.preventDefault();
+          setBookmarksOpen(!isBookmarksOpen);
+          break;
+        case 'escape':
+          e.preventDefault();
+          if (isSettingsOpen) setSettingsOpen(false);
+          else if (isTocOpen) setTocOpen(false);
+          else if (isBookmarksOpen) setBookmarksOpen(false);
+          else if (isUIVisible) hideUI();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSettingsOpen, isTocOpen, isBookmarksOpen, isUIVisible, setSettingsOpen, setTocOpen, setBookmarksOpen, hideUI]);
+
   // Clean up on unmount
   useEffect(() => {
     return () => {
@@ -223,6 +258,32 @@ export function ReaderView() {
         onClose={() => setBookmarksOpen(false)}
         onNavigate={handleNavigate}
       />
+
+      {/* Floating quick access button - always visible */}
+      {!isUIVisible && !isTocOpen && !isSettingsOpen && !isBookmarksOpen && (
+        <div className="absolute bottom-6 right-6 z-30 flex flex-col gap-2">
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="p-3 rounded-full bg-[var(--bg-secondary)]/90 backdrop-blur-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all shadow-lg border border-[var(--border)]"
+            aria-label="Open settings (S)"
+            title="Settings (S)"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setTocOpen(true)}
+            className="p-3 rounded-full bg-[var(--bg-secondary)]/90 backdrop-blur-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all shadow-lg border border-[var(--border)]"
+            aria-label="Table of contents (T)"
+            title="Table of Contents (T)"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Loading overlay */}
       {isLoading && (
