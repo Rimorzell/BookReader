@@ -205,7 +205,6 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     getAnnotatedRendition,
     getBookHighlights,
     handleRemoveHighlight,
-    removeAnnotation,
     removeHighlight,
     selection,
   ]);
@@ -216,7 +215,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
     highlights.forEach((highlight) => {
       try {
-        removeAnnotation(rendition, highlight.startLocation);
+        rendition.annotations.remove(highlight.startLocation);
         rendition.annotations.add(
           'highlight',
           highlight.startLocation,
@@ -229,7 +228,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         // Ignore invalid CFI ranges
       }
     });
-  }, [HIGHLIGHT_COLORS, getBookHighlights, removeAnnotation]);
+  }, [getBookHighlights, HIGHLIGHT_COLORS]);
 
   // Keep rendition annotations in sync with store updates (additions/removals)
   useEffect(() => {
