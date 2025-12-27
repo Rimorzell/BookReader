@@ -6,14 +6,14 @@ import { ReaderBottomBar } from './ReaderBottomBar';
 import { TableOfContents } from './TableOfContents';
 import { ReaderSettings } from './ReaderSettings';
 import { BookmarksPanel } from './BookmarksPanel';
-import { useReaderStore, useLibraryStore } from '../../stores';
+import { useReaderStore, useLibraryStore, toast } from '../../stores';
 import { UI_CONSTANTS } from '../../constants';
 import type { TocItem } from '../../types';
 
 export function ReaderView() {
   const { bookId } = useParams<{ bookId: string }>();
   const navigate = useNavigate();
-  const { books, updateReadingTime } = useLibraryStore();
+  const { books, updateReadingTime, addBookmark, removeBookmark, getBookBookmarks } = useLibraryStore();
   const {
     isUIVisible,
     showUI,
@@ -29,12 +29,30 @@ export function ReaderView() {
     error,
     endSession,
     reset,
+    currentLocation,
   } = useReaderStore();
 
   const [toc, setToc] = useState<TocItem[]>([]);
   const rendererRef = useRef<EpubRendererRef | null>(null);
 
   const book = books.find((b) => b.id === bookId);
+
+  // Bookmarking functionality
+  const bookmarks = bookId ? getBookBookmarks(bookId) : [];
+  const currentBookmark = bookmarks.find((b) => b.location === currentLocation);
+  const isCurrentLocationBookmarked = !!currentBookmark;
+
+  const handleToggleBookmark = useCallback(() => {
+    if (!bookId || !currentLocation) return;
+
+    if (isCurrentLocationBookmarked && currentBookmark) {
+      removeBookmark(currentBookmark.id);
+      toast.success('Bookmark removed');
+    } else {
+      addBookmark(bookId, currentLocation, 'Bookmark');
+      toast.success('Page bookmarked');
+    }
+  }, [bookId, currentLocation, isCurrentLocationBookmarked, currentBookmark, addBookmark, removeBookmark]);
 
   // Auto-hide UI after inactivity
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -199,13 +217,10 @@ export function ReaderView() {
       <ReaderTopBar
         book={book}
         visible={isUIVisible}
-        onOpenToc={() => setTocOpen(true)}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onOpenBookmarks={() => setBookmarksOpen(true)}
       />
 
       {/* Reader content with navigation arrows */}
-      <div className="h-full pt-0 relative" data-reader-content>
+      <div className="h-full relative" data-reader-content>
         {/* Left navigation arrow - absolutely positioned */}
         <button
           onClick={handlePrevPage}
@@ -217,8 +232,8 @@ export function ReaderView() {
           </svg>
         </button>
 
-        {/* Book content - centered with padding for arrows */}
-        <div className="h-full flex items-center justify-center px-16">
+        {/* Book content - centered horizontally, starts from top */}
+        <div className="h-full flex justify-center px-16 py-4">
           <div className="h-full w-full max-w-3xl">
             {book.fileType === 'epub' && (
               <EpubRenderer ref={rendererRef} book={book} onTocLoaded={handleTocLoaded} />
@@ -261,7 +276,6 @@ export function ReaderView() {
         onPrevPage={handlePrevPage}
         onNextPage={handleNextPage}
         onScrubProgress={handleScrubProgress}
-        readingTimeSeconds={book.readingTime}
       />
 
       {/* Table of Contents */}
@@ -286,17 +300,48 @@ export function ReaderView() {
         onNavigate={handleNavigate}
       />
 
-      {/* Floating quick access buttons - always visible */}
+      {/* Floating bookmark button - always visible for quick access */}
+      {!isTocOpen && !isSettingsOpen && !isBookmarksOpen && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggleBookmark();
+          }}
+          className={`absolute top-16 right-20 z-30 p-2.5 rounded-lg transition-all border ${
+            isCurrentLocationBookmarked
+              ? 'bg-[var(--accent)]/20 text-[var(--accent)] border-[var(--accent)]/50'
+              : 'bg-[var(--bg-secondary)]/60 text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] border-[var(--border)]/50'
+          }`}
+          aria-label={isCurrentLocationBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+          title={isCurrentLocationBookmarked ? 'Remove bookmark' : 'Bookmark this page'}
+        >
+          <svg
+            className="w-5 h-5"
+            fill={isCurrentLocationBookmarked ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+            />
+          </svg>
+        </button>
+      )}
+
+      {/* Floating quick access buttons - positioned on right side, clear of navigation */}
       {!isTocOpen && !isSettingsOpen && !isBookmarksOpen && (
         <div
-          className="absolute bottom-20 right-4 z-40 flex flex-col gap-2"
+          className="absolute right-20 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2"
           onClick={(e) => e.stopPropagation()}
           onMouseMove={(e) => e.stopPropagation()}
         >
           <button
             onClick={() => setSettingsOpen(true)}
-            className="p-2.5 rounded-full bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all shadow-md border border-[var(--border)]"
-            aria-label="Open settings (S)"
+            className="p-2 rounded-lg bg-[var(--bg-secondary)]/60 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all border border-[var(--border)]/50"
+            aria-label="Settings (S)"
             title="Settings (S)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -305,8 +350,8 @@ export function ReaderView() {
           </button>
           <button
             onClick={() => setTocOpen(true)}
-            className="p-2.5 rounded-full bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all shadow-md border border-[var(--border)]"
-            aria-label="Table of contents (T)"
+            className="p-2 rounded-lg bg-[var(--bg-secondary)]/60 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all border border-[var(--border)]/50"
+            aria-label="Contents (T)"
             title="Table of Contents (T)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,7 +360,7 @@ export function ReaderView() {
           </button>
           <button
             onClick={() => setBookmarksOpen(true)}
-            className="p-2.5 rounded-full bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all shadow-md border border-[var(--border)]"
+            className="p-2 rounded-lg bg-[var(--bg-secondary)]/60 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all border border-[var(--border)]/50"
             aria-label="Bookmarks (B)"
             title="Bookmarks (B)"
           >

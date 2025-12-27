@@ -1,10 +1,17 @@
-import { forwardRef, useEffect, useRef, useCallback, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useRef, useCallback, useImperativeHandle, useState } from 'react';
 import ePub, { type Book as EpubBook, type Rendition, type Location } from 'epubjs';
 import { useReaderStore, useSettingsStore, useLibraryStore, toast } from '../../stores';
-import type { Book, TocItem } from '../../types';
+import type { Book, TocItem, HighlightColor } from '../../types';
 import { getTableOfContents } from '../../utils/epubParser';
 import { readBookFile } from '../../utils/fileSystem';
 import { getThemeColors } from '../../constants';
+import { HighlightPopup } from './HighlightPopup';
+
+interface SelectionInfo {
+  text: string;
+  cfiRange: string;
+  position: { x: number; y: number };
+}
 
 interface EpubRendererProps {
   book: Book;
@@ -16,6 +23,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   const containerRef = useRef<HTMLDivElement>(null);
   const epubRef = useRef<EpubBook | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
+  const [selection, setSelection] = useState<SelectionInfo | null>(null);
 
   // Store callbacks in refs to avoid re-triggering initialization effect
   const onTocLoadedRef = useRef(onTocLoaded);
@@ -31,7 +39,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   } = useReaderStore();
 
   const { settings } = useSettingsStore();
-  const { updateReadingProgress } = useLibraryStore();
+  const { updateReadingProgress, addHighlight, getBookHighlights } = useLibraryStore();
   const readerSettings = settings.reader;
 
   // Store book.id in ref for callbacks
@@ -93,6 +101,68 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       toast.error('Failed to navigate to that position');
     }
   }, []);
+
+  // Handle highlighting selected text
+  const handleHighlight = useCallback((color: HighlightColor) => {
+    if (!selection || !renditionRef.current) return;
+
+    // Add highlight to store
+    addHighlight({
+      bookId: bookIdRef.current,
+      text: selection.text,
+      startLocation: selection.cfiRange,
+      endLocation: selection.cfiRange,
+      color,
+    });
+
+    // Apply highlight style in rendition
+    const highlightColors: Record<string, string> = {
+      yellow: 'rgba(254, 240, 138, 0.5)',
+      green: 'rgba(187, 247, 208, 0.5)',
+      blue: 'rgba(191, 219, 254, 0.5)',
+      pink: 'rgba(251, 207, 232, 0.5)',
+      purple: 'rgba(221, 214, 254, 0.5)',
+    };
+
+    renditionRef.current.annotations.add(
+      'highlight',
+      selection.cfiRange,
+      {},
+      undefined,
+      'hl',
+      { fill: highlightColors[color] || highlightColors.yellow }
+    );
+
+    setSelection(null);
+    toast.success('Text highlighted');
+  }, [selection, addHighlight]);
+
+  // Apply existing highlights when rendition is ready
+  const applyExistingHighlights = useCallback((rendition: Rendition) => {
+    const highlights = getBookHighlights(bookIdRef.current);
+    const highlightColors: Record<string, string> = {
+      yellow: 'rgba(254, 240, 138, 0.5)',
+      green: 'rgba(187, 247, 208, 0.5)',
+      blue: 'rgba(191, 219, 254, 0.5)',
+      pink: 'rgba(251, 207, 232, 0.5)',
+      purple: 'rgba(221, 214, 254, 0.5)',
+    };
+
+    highlights.forEach((highlight) => {
+      try {
+        rendition.annotations.add(
+          'highlight',
+          highlight.startLocation,
+          {},
+          undefined,
+          'hl',
+          { fill: highlightColors[highlight.color] || highlightColors.yellow }
+        );
+      } catch {
+        // Ignore invalid CFI ranges
+      }
+    });
+  }, [getBookHighlights]);
 
   useImperativeHandle(ref, () => ({
     goNext,
@@ -194,6 +264,35 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         rendition.on('locationChanged', handleLocationChange);
         rendition.on('rendered', () => applyStyles(rendition));
 
+        // Handle text selection for highlighting
+        rendition.on('selected', (cfiRange: string, contents: { window: Window }) => {
+          const selectedText = contents.window.getSelection()?.toString().trim();
+          if (selectedText && selectedText.length > 0) {
+            // Get selection position for popup
+            const selection = contents.window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              const rect = range.getBoundingClientRect();
+
+              // Get iframe position to calculate absolute position
+              const iframe = containerRef.current?.querySelector('iframe');
+              const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
+
+              setSelection({
+                text: selectedText,
+                cfiRange,
+                position: {
+                  x: iframeRect.left + rect.left + rect.width / 2,
+                  y: iframeRect.top + rect.top,
+                },
+              });
+            }
+          }
+        });
+
+        // Apply existing highlights
+        applyExistingHighlights(rendition);
+
         // Start reading session and hide loading - book is now visible
         startSession();
         setLoading(false);
@@ -253,13 +352,22 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   }, [goNext, goPrev]);
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full reader-content"
-      style={{
-        backgroundColor: getThemeColors(readerSettings.theme).background,
-      }}
-    />
+    <>
+      <div
+        ref={containerRef}
+        className="w-full h-full reader-content"
+        style={{
+          backgroundColor: getThemeColors(readerSettings.theme).background,
+        }}
+      />
+      {selection && (
+        <HighlightPopup
+          position={selection.position}
+          onHighlight={handleHighlight}
+          onClose={() => setSelection(null)}
+        />
+      )}
+    </>
   );
 });
 EpubRenderer.displayName = 'EpubRenderer';

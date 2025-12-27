@@ -1,5 +1,4 @@
 import { useReaderStore, useSettingsStore } from '../../stores';
-import { formatTimeRemaining } from '../../utils';
 import { UI_CONSTANTS } from '../../constants';
 
 interface ReaderBottomBarProps {
@@ -7,23 +6,15 @@ interface ReaderBottomBarProps {
   onPrevPage: () => void;
   onNextPage: () => void;
   onScrubProgress: (percentage: number) => void;
-  readingTimeSeconds?: number;
 }
 export function ReaderBottomBar({
   visible,
   onPrevPage,
   onNextPage,
   onScrubProgress,
-  readingTimeSeconds = 0,
 }: ReaderBottomBarProps) {
   const { progress, currentPage, totalPages } = useReaderStore();
   const { settings } = useSettingsStore();
-  const averagePageTime = totalPages > 0 && currentPage > 0
-    ? readingTimeSeconds / currentPage
-    : 0;
-  const timeRemaining = averagePageTime > 0
-    ? formatTimeRemaining(progress, totalPages, averagePageTime)
-    : null;
 
   const handleProgressScrub = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -88,12 +79,6 @@ export function ReaderBottomBar({
             <span>Page {currentPage} of {totalPages}</span>
             <span className="text-[var(--text-muted)]">|</span>
             <span>{Math.round(progress)}% complete</span>
-            {timeRemaining && (
-              <>
-                <span className="text-[var(--text-muted)]">|</span>
-                <span>{timeRemaining} left</span>
-              </>
-            )}
           </div>
         )}
       </div>
