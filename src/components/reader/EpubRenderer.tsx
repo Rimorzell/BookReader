@@ -95,6 +95,14 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     return renditionRef.current as AnnotatedRendition | null;
   }, []);
 
+  const removeAnnotation = useCallback((rendition: AnnotatedRendition, cfi: string) => {
+    try {
+      rendition.annotations.remove(cfi, 'highlight', 'hl');
+    } catch {
+      // Ignore missing annotations
+    }
+  }, []);
+
   const clearBrowserSelection = useCallback(() => {
     try {
       const iframe = containerRef.current?.querySelector('iframe') as HTMLIFrameElement | null;
@@ -143,16 +151,15 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     const rendition = getAnnotatedRendition();
     if (!selection || !rendition || !selection.existingHighlightId) return;
 
-    try {
-      rendition.annotations.remove(selection.cfiRange);
-    } catch {
-      // ignore missing annotation
-    }
+    const existing = getBookHighlights(bookIdRef.current).find((h) => h.id === selection.existingHighlightId);
+    const targetCfi = existing?.startLocation || selection.cfiRange;
 
+    removeAnnotation(rendition, targetCfi);
+    removeAnnotation(rendition, selection.cfiRange);
     removeHighlight(selection.existingHighlightId);
     clearBrowserSelection();
     setSelection(null);
-  }, [clearBrowserSelection, getAnnotatedRendition, removeHighlight, selection]);
+  }, [clearBrowserSelection, getAnnotatedRendition, getBookHighlights, removeAnnotation, removeHighlight, selection]);
 
   // Handle highlighting selected text
   const handleHighlight = useCallback((color: HighlightColor) => {
@@ -179,7 +186,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       color,
     });
 
-    rendition.annotations.remove(selection.cfiRange);
+    removeAnnotation(rendition, selection.cfiRange);
     rendition.annotations.add(
       'highlight',
       selection.cfiRange,
