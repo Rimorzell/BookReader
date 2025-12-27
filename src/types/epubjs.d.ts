@@ -20,7 +20,7 @@ declare module 'epubjs' {
     };
     spine: {
       get: (href: string) => { cfiBase: string } | null;
-      spineItems: unknown[];
+      spineItems: SpineItem[];
     };
     locations: {
       generate: (chars: number) => Promise<void>;
@@ -42,6 +42,21 @@ declare module 'epubjs' {
     ) => Rendition;
   }
 
+  export interface SpineItem {
+    load: (book: Book) => Promise<SpineContents>;
+    href: string;
+    index: number;
+  }
+
+  export interface SpineContents {
+    find: (query: string) => SearchResult[];
+  }
+
+  export interface SearchResult {
+    cfi: string;
+    excerpt: string;
+  }
+
   export interface NavItem {
     id: string;
     href: string;
@@ -49,12 +64,23 @@ declare module 'epubjs' {
     subitems?: NavItem[];
   }
 
+  // Event handler types for Rendition
+  export type LocationChangedHandler = (location: Location) => void;
+  export type RenderedHandler = (section: unknown) => void;
+  export type ClickHandler = (event: MouseEvent) => void;
+
   export interface Rendition {
     display: (target?: string) => Promise<void>;
     next: () => Promise<void>;
     prev: () => Promise<void>;
-    on: (event: string, callback: (...args: unknown[]) => void) => void;
-    off: (event: string, callback: (...args: unknown[]) => void) => void;
+    on(event: 'locationChanged', callback: LocationChangedHandler): void;
+    on(event: 'rendered', callback: RenderedHandler): void;
+    on(event: 'click', callback: ClickHandler): void;
+    on(event: string, callback: (...args: unknown[]) => void): void;
+    off(event: 'locationChanged', callback: LocationChangedHandler): void;
+    off(event: 'rendered', callback: RenderedHandler): void;
+    off(event: 'click', callback: ClickHandler): void;
+    off(event: string, callback: (...args: unknown[]) => void): void;
     themes: {
       default: (rules: Record<string, Record<string, string>>) => void;
       override: (selector: string, css: string) => void;
