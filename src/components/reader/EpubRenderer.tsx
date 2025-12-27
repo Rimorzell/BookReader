@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useCallback, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useRef, useCallback, useImperativeHandle, useState, useMemo } from 'react';
 import ePub, { type Book as EpubBook, type Rendition, type Location } from 'epubjs';
 import { useReaderStore, useSettingsStore, useLibraryStore, toast } from '../../stores';
 import type { Book, TocItem, HighlightColor } from '../../types';
@@ -18,12 +18,30 @@ interface EpubRendererProps {
   onTocLoaded: (toc: TocItem[]) => void;
 }
 
+type AnnotatedRendition = Rendition & {
+  annotations: {
+    add: (...args: unknown[]) => void;
+    remove: (...args: unknown[]) => void;
+  };
+  on: (event: string, callback: (...args: unknown[]) => void) => void;
+};
+
 export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   ({ book, onTocLoaded }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const epubRef = useRef<EpubBook | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
+  const HIGHLIGHT_COLORS = useMemo<Record<HighlightColor, string>>(
+    () => ({
+      yellow: 'rgba(254, 240, 138, 0.5)',
+      green: 'rgba(187, 247, 208, 0.5)',
+      blue: 'rgba(191, 219, 254, 0.5)',
+      pink: 'rgba(251, 207, 232, 0.5)',
+      purple: 'rgba(221, 214, 254, 0.5)',
+    }),
+    []
+  );
 
   // Store callbacks in refs to avoid re-triggering initialization effect
   const onTocLoadedRef = useRef(onTocLoaded);
@@ -72,6 +90,10 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     });
   }, [readerSettings]);
 
+  const getAnnotatedRendition = useCallback(() => {
+    return renditionRef.current as AnnotatedRendition | null;
+  }, []);
+
   const goNext = useCallback(() => {
     renditionRef.current?.next();
   }, []);
@@ -104,7 +126,8 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
   // Handle highlighting selected text
   const handleHighlight = useCallback((color: HighlightColor) => {
-    if (!selection || !renditionRef.current) return;
+    const rendition = getAnnotatedRendition();
+    if (!selection || !rendition) return;
 
     // Add highlight to store
     addHighlight({
@@ -115,54 +138,98 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       color,
     });
 
-    // Apply highlight style in rendition
-    const highlightColors: Record<string, string> = {
-      yellow: 'rgba(254, 240, 138, 0.5)',
-      green: 'rgba(187, 247, 208, 0.5)',
-      blue: 'rgba(191, 219, 254, 0.5)',
-      pink: 'rgba(251, 207, 232, 0.5)',
-      purple: 'rgba(221, 214, 254, 0.5)',
-    };
-
-    renditionRef.current.annotations.add(
+    rendition.annotations.remove(selection.cfiRange);
+    rendition.annotations.add(
       'highlight',
       selection.cfiRange,
       {},
       undefined,
       'hl',
-      { fill: highlightColors[color] || highlightColors.yellow }
+      { fill: HIGHLIGHT_COLORS[color] || HIGHLIGHT_COLORS.yellow }
     );
 
     setSelection(null);
     toast.success('Text highlighted');
-  }, [selection, addHighlight]);
+  }, [HIGHLIGHT_COLORS, addHighlight, getAnnotatedRendition, selection]);
 
   // Apply existing highlights when rendition is ready
-  const applyExistingHighlights = useCallback((rendition: Rendition) => {
+  const applyExistingHighlights = useCallback((rendition: AnnotatedRendition) => {
     const highlights = getBookHighlights(bookIdRef.current);
-    const highlightColors: Record<string, string> = {
-      yellow: 'rgba(254, 240, 138, 0.5)',
-      green: 'rgba(187, 247, 208, 0.5)',
-      blue: 'rgba(191, 219, 254, 0.5)',
-      pink: 'rgba(251, 207, 232, 0.5)',
-      purple: 'rgba(221, 214, 254, 0.5)',
-    };
 
     highlights.forEach((highlight) => {
       try {
+        rendition.annotations.remove(highlight.startLocation);
         rendition.annotations.add(
           'highlight',
           highlight.startLocation,
           {},
           undefined,
           'hl',
-          { fill: highlightColors[highlight.color] || highlightColors.yellow }
+          { fill: HIGHLIGHT_COLORS[highlight.color] || HIGHLIGHT_COLORS.yellow }
         );
       } catch {
         // Ignore invalid CFI ranges
       }
     });
-  }, [getBookHighlights]);
+  }, [getBookHighlights, HIGHLIGHT_COLORS]);
+
+  // Keep rendition annotations in sync with store updates (additions/removals)
+  useEffect(() => {
+    let previousHighlights = useLibraryStore
+      .getState()
+      .highlights.filter((h) => h.bookId === bookIdRef.current);
+
+    const unsubscribe = useLibraryStore.subscribe((state) => {
+      const highlights = state.highlights.filter((h) => h.bookId === bookIdRef.current);
+      const rendition = getAnnotatedRendition();
+      if (!rendition) {
+        previousHighlights = highlights;
+        return;
+      }
+
+      const prevMap = new Map(previousHighlights.map((h) => [h.id, h]));
+      const nextMap = new Map(highlights.map((h) => [h.id, h]));
+
+      // Remove deleted highlights
+      prevMap.forEach((highlight, id) => {
+        if (!nextMap.has(id)) {
+          try {
+            rendition.annotations.remove(highlight.startLocation);
+          } catch {
+            // Ignore annotation errors
+          }
+        }
+      });
+
+      // Add or update new/changed highlights
+      nextMap.forEach((highlight, id) => {
+        const prev = prevMap.get(id);
+        if (!prev || prev.startLocation !== highlight.startLocation || prev.color !== highlight.color) {
+          try {
+            rendition.annotations.remove(highlight.startLocation);
+          } catch {
+            // Ignore missing annotations
+          }
+          try {
+            rendition.annotations.add(
+              'highlight',
+              highlight.startLocation,
+              {},
+              undefined,
+              'hl',
+              { fill: HIGHLIGHT_COLORS[highlight.color] || HIGHLIGHT_COLORS.yellow }
+            );
+          } catch {
+            // Ignore invalid CFI ranges
+          }
+        }
+      });
+
+      previousHighlights = highlights;
+    });
+
+    return unsubscribe;
+  }, [getAnnotatedRendition, HIGHLIGHT_COLORS]);
 
   useImperativeHandle(ref, () => ({
     goNext,
@@ -265,7 +332,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         rendition.on('rendered', () => applyStyles(rendition));
 
         // Handle text selection for highlighting
-        rendition.on('selected', (cfiRange: string, contents: { window: Window }) => {
+        rendition.on('selected', ((cfiRange: string, contents: { window: Window }) => {
           const selectedText = contents.window.getSelection()?.toString().trim();
           if (selectedText && selectedText.length > 0) {
             // Get selection position for popup
@@ -288,10 +355,10 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
               });
             }
           }
-        });
+        }) as unknown as (...args: unknown[]) => void);
 
         // Apply existing highlights
-        applyExistingHighlights(rendition);
+        applyExistingHighlights(rendition as AnnotatedRendition);
 
         // Start reading session and hide loading - book is now visible
         startSession();
