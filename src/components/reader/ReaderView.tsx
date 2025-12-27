@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { EpubRenderer } from './EpubRenderer';
+import { EpubRenderer, type EpubRendererRef } from './EpubRenderer';
 import { ReaderTopBar } from './ReaderTopBar';
 import { ReaderBottomBar } from './ReaderBottomBar';
 import { TableOfContents } from './TableOfContents';
@@ -31,7 +31,7 @@ export function ReaderView() {
   } = useReaderStore();
 
   const [toc, setToc] = useState<TocItem[]>([]);
-  const rendererRef = useRef<{ goNext: () => void; goPrev: () => void; goToLocation: (cfi: string) => void } | null>(null);
+  const rendererRef = useRef<EpubRendererRef | null>(null);
 
   const book = books.find((b) => b.id === bookId);
 
@@ -92,7 +92,7 @@ export function ReaderView() {
       }
       reset();
     };
-  }, [bookId]);
+  }, [bookId, endSession, reset, updateReadingTime]);
 
   // Handle if book not found
   useEffect(() => {
@@ -149,6 +149,10 @@ export function ReaderView() {
     rendererRef.current?.goNext();
   };
 
+  const handleScrubProgress = (percentage: number) => {
+    rendererRef.current?.goToPercentage(percentage);
+  };
+
   return (
     <div
       className="relative h-full overflow-hidden"
@@ -167,7 +171,7 @@ export function ReaderView() {
       {/* Reader content */}
       <div className="h-full pt-0" data-reader-content>
         {book.fileType === 'epub' && (
-          <EpubRenderer book={book} onTocLoaded={handleTocLoaded} />
+          <EpubRenderer ref={rendererRef} book={book} onTocLoaded={handleTocLoaded} />
         )}
         {book.fileType === 'pdf' && (
           <div className="flex items-center justify-center h-full text-[var(--text-secondary)]">
@@ -181,6 +185,8 @@ export function ReaderView() {
         visible={isUIVisible}
         onPrevPage={handlePrevPage}
         onNextPage={handleNextPage}
+        onScrubProgress={handleScrubProgress}
+        readingTimeSeconds={book.readingTime}
       />
 
       {/* Table of Contents */}

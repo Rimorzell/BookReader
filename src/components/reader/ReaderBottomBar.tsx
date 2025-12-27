@@ -1,12 +1,44 @@
 import { useReaderStore, useSettingsStore } from '../../stores';
+import { formatTimeRemaining } from '../../utils';
+
 interface ReaderBottomBarProps {
   visible: boolean;
   onPrevPage: () => void;
   onNextPage: () => void;
+  onScrubProgress: (percentage: number) => void;
+  readingTimeSeconds?: number;
 }
-export function ReaderBottomBar({ visible, onPrevPage, onNextPage }: ReaderBottomBarProps) {
+export function ReaderBottomBar({
+  visible,
+  onPrevPage,
+  onNextPage,
+  onScrubProgress,
+  readingTimeSeconds = 0,
+}: ReaderBottomBarProps) {
   const { progress, currentPage, totalPages } = useReaderStore();
   const { settings } = useSettingsStore();
+  const averagePageTime = totalPages > 0 && currentPage > 0
+    ? readingTimeSeconds / currentPage
+    : 0;
+  const timeRemaining = averagePageTime > 0
+    ? formatTimeRemaining(progress, totalPages, averagePageTime)
+    : null;
+
+  const handleProgressScrub = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const percentage = ((e.clientX - rect.left) / rect.width) * 100;
+    onScrubProgress(Math.max(0, Math.min(100, percentage)));
+  };
+
+  const handleProgressKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      onScrubProgress(Math.max(0, progress - 2));
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      onScrubProgress(Math.min(100, progress + 2));
+    }
+  };
   return (
     <footer
       className={`absolute bottom-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 bg-[var(--bg-primary)]/95 backdrop-blur-sm border-t border-[var(--border)] transition-all duration-300 ${
@@ -27,10 +59,23 @@ export function ReaderBottomBar({ visible, onPrevPage, onNextPage }: ReaderBotto
       <div className="flex-1 flex flex-col items-center gap-2 px-4">
         {/* Progress bar */}
         <div className="w-full max-w-xl">
-          <div className="h-1 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+          <div
+            className="h-2 bg-[var(--bg-tertiary)] rounded-full overflow-hidden cursor-pointer relative group"
+            role="slider"
+            tabIndex={0}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress)}
+            onClick={handleProgressScrub}
+            onKeyDown={handleProgressKeyDown}
+          >
             <div
-              className="h-full bg-[var(--accent)] transition-all duration-300"
+              className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] transition-all duration-300"
               style={{ width: `${progress}%` }}
+            />
+            <div
+              className="absolute top-1/2 -translate-y-1/2 bg-[var(--bg-primary)] border border-[var(--border)] rounded-full w-4 h-4 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ left: `calc(${progress}% - 8px)` }}
             />
           </div>
         </div>
@@ -40,6 +85,12 @@ export function ReaderBottomBar({ visible, onPrevPage, onNextPage }: ReaderBotto
             <span>Page {currentPage} of {totalPages}</span>
             <span className="text-[var(--text-muted)]">|</span>
             <span>{Math.round(progress)}% complete</span>
+            {timeRemaining && (
+              <>
+                <span className="text-[var(--text-muted)]">|</span>
+                <span>{timeRemaining} left</span>
+              </>
+            )}
           </div>
         )}
       </div>
