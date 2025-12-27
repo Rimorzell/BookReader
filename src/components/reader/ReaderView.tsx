@@ -45,7 +45,7 @@ export function ReaderView() {
     if (isUIVisible && !isTocOpen && !isSettingsOpen && !isBookmarksOpen) {
       hideTimeoutRef.current = setTimeout(() => {
         hideUI();
-      }, 3000);
+      }, 5000); // 5 seconds before auto-hide
     }
   }, [isUIVisible, isTocOpen, isSettingsOpen, isBookmarksOpen, hideUI]);
 
@@ -243,6 +243,19 @@ export function ReaderView() {
         onClose={() => setBookmarksOpen(false)}
         onNavigate={handleNavigate}
       />
+
+      {/* Persistent menu button - always visible when UI is hidden */}
+      {!isUIVisible && (
+        <button
+          onClick={showUI}
+          className="absolute top-4 left-4 z-40 p-2 rounded-full bg-black/20 hover:bg-black/40 transition-colors"
+          aria-label="Show menu"
+        >
+          <svg className="w-6 h-6 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      )}
 
       {/* Loading overlay */}
       {isLoading && (

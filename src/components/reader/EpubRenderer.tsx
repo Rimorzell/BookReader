@@ -188,162 +188,37 @@ export const EpubRenderer = forwardRef<EpubRendererHandle, EpubRendererProps>(fu
   const applyStyles = useCallback((rendition: Rendition) => {
     const themeColors = getThemeColors(readerSettings.theme);
 
+    // Simple, clean styles that don't break pagination
     rendition.themes.default({
-      // Base body styles
       'body': {
-        'font-family': `"${readerSettings.fontFamily}", "Georgia", "Times New Roman", serif !important`,
+        'font-family': `"${readerSettings.fontFamily}", "Georgia", serif !important`,
         'font-size': `${readerSettings.fontSize}px !important`,
         'line-height': `${readerSettings.lineHeight} !important`,
         'color': `${themeColors.text} !important`,
         'background-color': `${themeColors.background} !important`,
-        'padding': '40px 60px !important',
-        'margin': '0 auto !important',
-        'max-width': '800px !important',
         'text-rendering': 'optimizeLegibility !important',
-        '-webkit-font-smoothing': 'antialiased !important',
-        'word-spacing': '0.05em !important',
       },
-      // Paragraphs
       'p': {
         'text-align': `${readerSettings.textAlign} !important`,
-        'margin': '0 0 1em 0 !important',
-        'text-indent': '0 !important',
-        'orphans': '2 !important',
-        'widows': '2 !important',
+        'margin': '0 0 0.8em 0 !important',
       },
-      // Headings
-      'h1': {
-        'font-size': '1.8em !important',
-        'font-weight': 'bold !important',
-        'margin': '1em 0 0.5em 0 !important',
+      'h1, h2, h3, h4, h5, h6': {
         'color': `${themeColors.text} !important`,
-        'text-align': 'center !important',
-        'line-height': '1.2 !important',
-      },
-      'h2': {
-        'font-size': '1.5em !important',
-        'font-weight': 'bold !important',
-        'margin': '1em 0 0.5em 0 !important',
-        'color': `${themeColors.text} !important`,
-        'line-height': '1.3 !important',
-      },
-      'h3': {
-        'font-size': '1.3em !important',
-        'font-weight': 'bold !important',
-        'margin': '1em 0 0.5em 0 !important',
-        'color': `${themeColors.text} !important`,
-        'line-height': '1.3 !important',
-      },
-      'h4, h5, h6': {
-        'font-size': '1.1em !important',
-        'font-weight': 'bold !important',
-        'margin': '1em 0 0.5em 0 !important',
-        'color': `${themeColors.text} !important`,
-        'line-height': '1.4 !important',
-      },
-      // Links
-      'a': {
-        'color': `${themeColors.link} !important`,
-        'text-decoration': 'none !important',
-      },
-      'a:hover': {
-        'text-decoration': 'underline !important',
-      },
-      // Images - centered and constrained
-      'img': {
-        'max-width': '100% !important',
-        'max-height': '80vh !important',
-        'height': 'auto !important',
-        'display': 'block !important',
-        'margin': '1em auto !important',
-        'object-fit': 'contain !important',
-      },
-      // Figure elements
-      'figure': {
-        'margin': '1.5em auto !important',
-        'text-align': 'center !important',
-        'max-width': '100% !important',
-      },
-      'figcaption': {
-        'font-size': '0.9em !important',
-        'color': `${themeColors.text} !important`,
-        'opacity': '0.8 !important',
-        'margin-top': '0.5em !important',
-        'font-style': 'italic !important',
-      },
-      // Blockquotes
-      'blockquote': {
-        'margin': '1em 2em !important',
-        'padding-left': '1em !important',
-        'border-left': `3px solid ${themeColors.link} !important`,
-        'font-style': 'italic !important',
-        'opacity': '0.9 !important',
-      },
-      // Lists
-      'ul, ol': {
-        'margin': '1em 0 !important',
-        'padding-left': '2em !important',
-      },
-      'li': {
+        'margin-top': '1em !important',
         'margin-bottom': '0.5em !important',
       },
-      // Code blocks
-      'pre, code': {
-        'font-family': '"Menlo", "Monaco", "Courier New", monospace !important',
-        'font-size': '0.9em !important',
-        'background-color': `${readerSettings.theme === 'light' || readerSettings.theme === 'sepia' ? '#f5f5f5' : 'rgba(255,255,255,0.1)'} !important`,
-        'padding': '0.2em 0.4em !important',
-        'border-radius': '3px !important',
+      'a': {
+        'color': `${themeColors.link} !important`,
       },
-      'pre': {
-        'padding': '1em !important',
-        'overflow-x': 'auto !important',
-        'white-space': 'pre-wrap !important',
-        'word-wrap': 'break-word !important',
-      },
-      // Tables
-      'table': {
-        'width': '100% !important',
-        'border-collapse': 'collapse !important',
-        'margin': '1em 0 !important',
-      },
-      'th, td': {
-        'padding': '0.5em !important',
-        'border': `1px solid ${themeColors.text}33 !important`,
-        'text-align': 'left !important',
-      },
-      'th': {
-        'font-weight': 'bold !important',
-        'background-color': `${themeColors.text}11 !important`,
-      },
-      // Horizontal rule
-      'hr': {
-        'border': 'none !important',
-        'border-top': `1px solid ${themeColors.text}33 !important`,
-        'margin': '2em 0 !important',
-      },
-      // Emphasis
-      'em, i': {
-        'font-style': 'italic !important',
-      },
-      'strong, b': {
-        'font-weight': 'bold !important',
-      },
-      // Small text
-      'small': {
-        'font-size': '0.85em !important',
-      },
-      // SVG images
-      'svg': {
+      'img': {
         'max-width': '100% !important',
         'height': 'auto !important',
       },
-      // Cover images often have specific classes
-      '.cover, .cover-image, [class*="cover"]': {
-        'max-width': '100% !important',
-        'max-height': '90vh !important',
-        'margin': '0 auto !important',
-        'display': 'block !important',
+      'blockquote': {
+        'border-left': `3px solid ${themeColors.link} !important`,
+        'padding-left': '1em !important',
+        'margin-left': '0 !important',
+        'font-style': 'italic !important',
       },
     });
   }, [readerSettings]);

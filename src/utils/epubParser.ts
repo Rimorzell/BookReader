@@ -15,6 +15,24 @@ export interface TocItem {
   subitems?: TocItem[];
 }
 
+async function blobUrlToBase64(blobUrl: string): Promise<string | null> {
+  try {
+    const response = await fetch(blobUrl);
+    const blob = await response.blob();
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve(reader.result as string);
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function parseEpubMetadata(arrayBuffer: ArrayBuffer): Promise<EpubMetadata> {
   const book = ePub(arrayBuffer);
   await book.ready;
@@ -23,10 +41,22 @@ export async function parseEpubMetadata(arrayBuffer: ArrayBuffer): Promise<EpubM
   let coverUrl: string | undefined;
 
   try {
-    coverUrl = await book.coverUrl() ?? undefined;
+    const blobUrl = await book.coverUrl();
+    if (blobUrl) {
+      // Convert blob URL to base64 data URL so it persists
+      const base64 = await blobUrlToBase64(blobUrl);
+      if (base64) {
+        coverUrl = base64;
+      }
+      // Revoke the blob URL to free memory
+      URL.revokeObjectURL(blobUrl);
+    }
   } catch {
     // Cover extraction failed
   }
+
+  // Clean up the epub instance
+  book.destroy();
 
   return {
     title: metadata.title || 'Unknown Title',

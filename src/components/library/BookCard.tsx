@@ -1,4 +1,4 @@
-import React from 'react';
+import type { MouseEvent } from 'react';
 import type { Book } from '../../types';
 import { ProgressBar } from '../common';
 import { formatReadingTime, formatDate } from '../../utils';
@@ -7,7 +7,7 @@ interface BookCardProps {
   book: Book;
   viewMode: 'grid' | 'list';
   onClick: () => void;
-  onContextMenu?: (e: React.MouseEvent) => void;
+  onContextMenu?: (e: MouseEvent) => void;
 }
 
 export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardProps) {
