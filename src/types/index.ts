@@ -1,5 +1,5 @@
 export type ReadingStatus = 'reading' | 'finished' | 'want-to-read';
-export type FileType = 'epub' | 'pdf';
+export type FileType = 'epub';
 export type Theme = 'light' | 'sepia' | 'dark' | 'black';
 export type TextAlign = 'left' | 'justify';
 export type PageAnimation = 'slide' | 'fade' | 'none';
