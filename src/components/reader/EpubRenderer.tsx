@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { forwardRef, useEffect, useRef, useState, useCallback, useImperativeHandle } from 'react';
 import ePub, { type Book as EpubBook, type Rendition, type Location } from 'epubjs';
 import { useReaderStore, useSettingsStore, useLibraryStore } from '../../stores';
 import type { Book, TocItem } from '../../types';
@@ -10,7 +10,8 @@ interface EpubRendererProps {
   onTocLoaded: (toc: TocItem[]) => void;
 }
 
-export function EpubRenderer({ book, onTocLoaded }: EpubRendererProps) {
+export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
+  ({ book, onTocLoaded }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const epubRef = useRef<EpubBook | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
@@ -29,6 +30,114 @@ export function EpubRenderer({ book, onTocLoaded }: EpubRendererProps) {
   const readerSettings = settings.reader;
 
   const [isInitialized, setIsInitialized] = useState(false);
+
+  const applyStyles = useCallback((rendition: Rendition) => {
+    // Get theme colors
+    const themeColors = getThemeColors(readerSettings.theme);
+
+    rendition.themes.default({
+      body: {
+        'font-family': `${readerSettings.fontFamily} !important`,
+        'font-size': `${readerSettings.fontSize}px !important`,
+        'line-height': `${readerSettings.lineHeight} !important`,
+        'letter-spacing': `${readerSettings.letterSpacing}px !important`,
+        color: `${themeColors.text} !important`,
+        'background-color': `${themeColors.background} !important`,
+        padding: `${readerSettings.marginVertical}px ${readerSettings.marginHorizontal}px !important`,
+        'max-width': `min(${readerSettings.maxWidth}px, calc(100% - ${readerSettings.marginHorizontal * 2}px))`,
+        width: '100%',
+        'box-sizing': 'border-box',
+        margin: '0 auto',
+      },
+      p: {
+        'text-align': `${readerSettings.textAlign} !important`,
+        'margin-bottom': `${readerSettings.paragraphSpacing}em !important`,
+      },
+      a: {
+        color: `${themeColors.link} !important`,
+      },
+      img: {
+        display: 'block',
+        'max-width': '90% !important',
+        height: 'auto !important',
+        margin: '24px auto !important',
+      },
+    });
+  }, [readerSettings]);
+
+  const goNext = useCallback(() => {
+    renditionRef.current?.next();
+  }, []);
+
+  const goPrev = useCallback(() => {
+    renditionRef.current?.prev();
+  }, []);
+
+  const goToLocation = useCallback(async (target: string) => {
+    if (!renditionRef.current) return;
+    try {
+      await renditionRef.current.display(target);
+    } catch (err) {
+      console.error('Failed to navigate to location:', err);
+    }
+  }, []);
+
+  const goToPercentage = useCallback(async (percentage: number) => {
+    if (!epubRef.current || !renditionRef.current) return;
+    try {
+      const normalized = Math.max(0, Math.min(percentage, 100)) / 100;
+      const cfi = epubRef.current.locations.cfiFromPercentage(normalized);
+      await renditionRef.current.display(cfi);
+    } catch (err) {
+      console.error('Failed to navigate to percentage:', err);
+    }
+  }, []);
+
+  const handleLocationChange = useCallback((location: Location) => {
+    if (!epubRef.current || !location.start) return;
+
+    const cfi = location.start.cfi;
+    const percentage = epubRef.current.locations.percentageFromCfi(cfi);
+    const progress = Math.round(percentage * 100);
+
+    // Get current page info
+    const currentPage = location.start.displayed?.page || 1;
+    const totalPages = location.start.displayed?.total || 1;
+
+    updateLocation(cfi, currentPage, totalPages, progress);
+    updateReadingProgress(book.id, cfi, progress);
+
+    // Get chapter title
+    const chapter = epubRef.current.navigation?.toc.find(
+      (item) => epubRef.current!.spine.get(item.href)?.cfiBase === location.start.cfi.split('!')[0]
+    );
+    if (chapter) {
+      setCurrentChapter(chapter.label);
+    }
+  }, [book.id, setCurrentChapter, updateLocation, updateReadingProgress]);
+
+  const handleClick = useCallback((e: MouseEvent) => {
+    const container = containerRef.current;
+    if (!container || !renditionRef.current) return;
+
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+
+    // Click zones: left third = prev, right third = next
+    if (x < width / 3) {
+      renditionRef.current.prev();
+    } else if (x > (2 * width) / 3) {
+      renditionRef.current.next();
+    }
+  }, []);
+
+  useImperativeHandle(ref, () => ({
+    goNext,
+    goPrev,
+    goToLocation,
+    goToPercentage,
+  }), [goNext, goPrev, goToLocation, goToPercentage]);
 
   // Initialize the EPUB
   useEffect(() => {
@@ -67,7 +176,7 @@ export function EpubRenderer({ book, onTocLoaded }: EpubRendererProps) {
         applyStyles(rendition);
 
         // Generate locations for progress tracking
-        await epub.locations.generate(1024);
+        await epub.locations.generate(2048);
         setTotalLocations(epub.locations.length());
 
         // Display at last position or beginning
@@ -75,6 +184,10 @@ export function EpubRenderer({ book, onTocLoaded }: EpubRendererProps) {
           await rendition.display(book.currentLocation);
         } else {
           await rendition.display();
+          const initialLocation = rendition.currentLocation();
+          if (initialLocation) {
+            handleLocationChange(initialLocation as unknown as Location);
+          }
         }
 
         // Set up event handlers
@@ -98,95 +211,39 @@ export function EpubRenderer({ book, onTocLoaded }: EpubRendererProps) {
       }
     };
 
-    initEpub();
+    void initEpub();
 
     return () => {
       if (epubRef.current) {
         epubRef.current.destroy();
       }
     };
-  }, [book.filePath]);
+  }, [
+    applyStyles,
+    book.currentLocation,
+    book.filePath,
+    book.id,
+    handleClick,
+    handleLocationChange,
+    isInitialized,
+    onTocLoaded,
+    readerSettings.twoPageSpread,
+    readerSettings.viewMode,
+    setCurrentChapter,
+    setError,
+    setLoading,
+    setTotalLocations,
+    startSession,
+    updateLocation,
+    updateReadingProgress,
+  ]);
 
   // Apply reader settings when they change
   useEffect(() => {
     if (renditionRef.current) {
       applyStyles(renditionRef.current);
     }
-  }, [readerSettings]);
-
-  const applyStyles = useCallback((rendition: Rendition) => {
-    // Get theme colors
-    const themeColors = getThemeColors(readerSettings.theme);
-
-    rendition.themes.default({
-      body: {
-        'font-family': `${readerSettings.fontFamily} !important`,
-        'font-size': `${readerSettings.fontSize}px !important`,
-        'line-height': `${readerSettings.lineHeight} !important`,
-        'letter-spacing': `${readerSettings.letterSpacing}px !important`,
-        color: `${themeColors.text} !important`,
-        'background-color': `${themeColors.background} !important`,
-        padding: `${readerSettings.marginVertical}px ${readerSettings.marginHorizontal}px !important`,
-        'max-width': `${readerSettings.maxWidth}px`,
-        margin: '0 auto',
-      },
-      p: {
-        'text-align': `${readerSettings.textAlign} !important`,
-        'margin-bottom': `${readerSettings.paragraphSpacing}em !important`,
-      },
-      a: {
-        color: `${themeColors.link} !important`,
-      },
-    });
-  }, [readerSettings]);
-
-  const handleLocationChange = useCallback((location: Location) => {
-    if (!epubRef.current || !location.start) return;
-
-    const cfi = location.start.cfi;
-    const percentage = epubRef.current.locations.percentageFromCfi(cfi);
-    const progress = Math.round(percentage * 100);
-
-    // Get current page info
-    const currentPage = location.start.displayed?.page || 1;
-    const totalPages = location.start.displayed?.total || 1;
-
-    updateLocation(cfi, currentPage, totalPages, progress);
-    updateReadingProgress(book.id, cfi, progress);
-
-    // Get chapter title
-    const chapter = epubRef.current.navigation?.toc.find(
-      (item) => epubRef.current!.spine.get(item.href)?.cfiBase === location.start.cfi.split('!')[0]
-    );
-    if (chapter) {
-      setCurrentChapter(chapter.label);
-    }
-  }, [book.id, updateLocation, updateReadingProgress, setCurrentChapter]);
-
-  const handleClick = useCallback((e: MouseEvent) => {
-    const container = containerRef.current;
-    if (!container || !renditionRef.current) return;
-
-    const rect = container.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = rect.width;
-
-    // Click zones: left third = prev, right third = next
-    if (x < width / 3) {
-      renditionRef.current.prev();
-    } else if (x > (2 * width) / 3) {
-      renditionRef.current.next();
-    }
-  }, []);
-
-  // Navigation methods exposed via ref
-  const goNext = useCallback(() => {
-    renditionRef.current?.next();
-  }, []);
-
-  const goPrev = useCallback(() => {
-    renditionRef.current?.prev();
-  }, []);
+  }, [applyStyles, readerSettings]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -213,7 +270,8 @@ export function EpubRenderer({ book, onTocLoaded }: EpubRendererProps) {
       }}
     />
   );
-}
+});
+EpubRenderer.displayName = 'EpubRenderer';
 
 function getThemeColors(theme: string) {
   switch (theme) {
@@ -249,4 +307,5 @@ export interface EpubRendererRef {
   goNext: () => void;
   goPrev: () => void;
   goToLocation: (cfi: string) => void;
+  goToPercentage: (percentage: number) => void;
 }

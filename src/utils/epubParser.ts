@@ -1,4 +1,5 @@
 import ePub, { type Book as EpubBook, type Rendition, type NavItem } from 'epubjs';
+import { arrayBufferToBase64 } from './fileSystem';
 
 export interface EpubMetadata {
   title: string;
@@ -6,6 +7,7 @@ export interface EpubMetadata {
   description?: string;
   cover?: ArrayBuffer;
   coverUrl?: string;
+  coverDataUrl?: string;
 }
 
 export interface TocItem {
@@ -21,9 +23,24 @@ export async function parseEpubMetadata(arrayBuffer: ArrayBuffer): Promise<EpubM
 
   const metadata = await book.loaded.metadata;
   let coverUrl: string | undefined;
+  let coverDataUrl: string | undefined;
 
   try {
     coverUrl = await book.coverUrl() ?? undefined;
+
+    if (coverUrl) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 1500);
+        const response = await fetch(coverUrl, { signal: controller.signal });
+        const buf = await response.arrayBuffer();
+        const base64 = arrayBufferToBase64(buf);
+        coverDataUrl = `data:image/jpeg;base64,${base64}`;
+        clearTimeout(timeout);
+      } catch (err) {
+        console.warn('Failed to inline cover image:', err);
+      }
+    }
   } catch {
     // Cover extraction failed
   }
@@ -33,6 +50,7 @@ export async function parseEpubMetadata(arrayBuffer: ArrayBuffer): Promise<EpubM
     author: metadata.creator || 'Unknown Author',
     description: metadata.description,
     coverUrl,
+    coverDataUrl,
   };
 }
 

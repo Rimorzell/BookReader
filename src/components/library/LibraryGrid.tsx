@@ -4,6 +4,7 @@ import { BookCard } from './BookCard';
 import { EmptyState } from '../common';
 import { useLibraryStore, useSettingsStore } from '../../stores';
 import type { Book } from '../../types';
+import { useEffect } from 'react';
 
 interface LibraryGridProps {
   filter: string;
@@ -16,6 +17,7 @@ export function LibraryGrid({ filter, searchQuery }: LibraryGridProps) {
   const { settings } = useSettingsStore();
   const { sortBy, sortOrder, viewMode } = settings.library;
   const [contextMenu, setContextMenu] = useState<{ book: Book; x: number; y: number } | null>(null);
+  const [isPointerInsideMenu, setIsPointerInsideMenu] = useState(false);
 
   const filteredBooks = useMemo(() => {
     let result = [...books];
@@ -85,6 +87,31 @@ export function LibraryGrid({ filter, searchQuery }: LibraryGridProps) {
 
   const closeContextMenu = () => setContextMenu(null);
 
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    const handleClickAway = (event: MouseEvent) => {
+      if (isPointerInsideMenu) return;
+      const target = event.target as HTMLElement;
+      if (!target.closest?.('[data-library-context-menu]')) {
+        closeContextMenu();
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeContextMenu();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickAway);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickAway);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [contextMenu, isPointerInsideMenu]);
+
   if (filteredBooks.length === 0) {
     if (searchQuery) {
       return (
@@ -136,15 +163,17 @@ export function LibraryGrid({ filter, searchQuery }: LibraryGridProps) {
 
       {/* Context menu */}
       {contextMenu && (
-        <ContextMenu
-          book={contextMenu.book}
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onClose={closeContextMenu}
-        />
-      )}
-    </>
-  );
+      <ContextMenu
+        book={contextMenu.book}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        onClose={closeContextMenu}
+        onPointerEnter={() => setIsPointerInsideMenu(true)}
+        onPointerLeave={() => setIsPointerInsideMenu(false)}
+      />
+    )}
+  </>
+);
 }
 
 interface ContextMenuProps {
@@ -152,9 +181,11 @@ interface ContextMenuProps {
   x: number;
   y: number;
   onClose: () => void;
+  onPointerEnter: () => void;
+  onPointerLeave: () => void;
 }
 
-function ContextMenu({ book, x, y, onClose }: ContextMenuProps) {
+function ContextMenu({ book, x, y, onClose, onPointerEnter, onPointerLeave }: ContextMenuProps) {
   const { removeBook, setBookStatus } = useLibraryStore();
 
   const handleAction = (action: () => void) => {
@@ -165,6 +196,9 @@ function ContextMenu({ book, x, y, onClose }: ContextMenuProps) {
   return (
     <div
       className="fixed z-50 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg shadow-xl py-1 min-w-[180px]"
+      data-library-context-menu
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
       style={{ left: x, top: y }}
     >
       <button

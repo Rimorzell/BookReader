@@ -10,7 +10,7 @@ export function LibraryView() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { settings, setLibrarySortBy, setLibrarySortOrder, setLibraryViewMode } = useSettingsStore();
-  const { addBook } = useLibraryStore();
+  const { addBook, updateBook } = useLibraryStore();
 
   const handleAddBook = useCallback(async () => {
     const file = await openFileDialog();
@@ -20,19 +20,19 @@ export function LibraryView() {
       if (file.type === 'epub') {
         const metadata = await parseEpubMetadata(file.data.buffer as ArrayBuffer);
 
-        let coverPath: string | undefined;
-        if (metadata.coverUrl) {
-          coverPath = metadata.coverUrl;
-        }
-
-        addBook({
+        const newBook = addBook({
           title: metadata.title,
           author: metadata.author,
           description: metadata.description,
-          coverPath,
+          coverPath: metadata.coverDataUrl || metadata.coverUrl,
           filePath: file.path,
           fileType: 'epub',
         });
+
+        // Persist inline cover if available so it renders before opening
+        if (metadata.coverDataUrl) {
+          updateBook(newBook.id, { coverPath: metadata.coverDataUrl });
+        }
       } else if (file.type === 'pdf') {
         // For PDF, we'll use the filename as title
         const title = file.name.replace(/\.pdf$/i, '');
@@ -46,7 +46,7 @@ export function LibraryView() {
     } catch (error) {
       console.error('Failed to import book:', error);
     }
-  }, [addBook]);
+  }, [addBook, updateBook]);
 
   return (
     <div className="flex h-full">
