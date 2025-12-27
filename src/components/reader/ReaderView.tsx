@@ -84,6 +84,41 @@ export function ReaderView() {
     }
   }, [toggleUI, resetHideTimeout]);
 
+  // Keyboard shortcuts for quick access
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case 's':
+          e.preventDefault();
+          setSettingsOpen(!isSettingsOpen);
+          break;
+        case 't':
+          e.preventDefault();
+          setTocOpen(!isTocOpen);
+          break;
+        case 'b':
+          e.preventDefault();
+          setBookmarksOpen(!isBookmarksOpen);
+          break;
+        case 'escape':
+          e.preventDefault();
+          if (isSettingsOpen) setSettingsOpen(false);
+          else if (isTocOpen) setTocOpen(false);
+          else if (isBookmarksOpen) setBookmarksOpen(false);
+          else navigate('/'); // Exit to library
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSettingsOpen, isTocOpen, isBookmarksOpen, setSettingsOpen, setTocOpen, setBookmarksOpen, navigate]);
+
   // Clean up on unmount
   useEffect(() => {
     return () => {
@@ -169,28 +204,55 @@ export function ReaderView() {
         onOpenBookmarks={() => setBookmarksOpen(true)}
       />
 
-      {/* Reader content */}
-      <div className="h-full pt-0" data-reader-content>
-        {book.fileType === 'epub' && (
-          <EpubRenderer ref={rendererRef} book={book} onTocLoaded={handleTocLoaded} />
-        )}
-        {book.fileType === 'pdf' && (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <svg className="w-16 h-16 mx-auto mb-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <h2 className="text-lg font-medium text-[var(--text-primary)] mb-2">PDF Not Supported</h2>
-              <p className="text-[var(--text-secondary)] mb-4">PDF files cannot be opened yet. Only EPUB files are supported.</p>
-              <button
-                onClick={() => navigate('/')}
-                className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:bg-[var(--accent-hover)] transition-colors"
-              >
-                Return to Library
-              </button>
-            </div>
+      {/* Reader content with navigation arrows */}
+      <div className="h-full pt-0 relative" data-reader-content>
+        {/* Left navigation arrow - absolutely positioned */}
+        <button
+          onClick={handlePrevPage}
+          className="absolute left-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
+          aria-label="Previous page"
+        >
+          <svg className="w-8 h-8 opacity-30 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        {/* Book content - centered with padding for arrows */}
+        <div className="h-full flex items-center justify-center px-16">
+          <div className="h-full w-full max-w-3xl">
+            {book.fileType === 'epub' && (
+              <EpubRenderer ref={rendererRef} book={book} onTocLoaded={handleTocLoaded} />
+            )}
+            {book.fileType === 'pdf' && (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <svg className="w-16 h-16 mx-auto mb-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h2 className="text-lg font-medium text-[var(--text-primary)] mb-2">PDF Not Supported</h2>
+                  <p className="text-[var(--text-secondary)] mb-4">PDF files cannot be opened yet. Only EPUB files are supported.</p>
+                  <button
+                    onClick={() => navigate('/')}
+                    className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:bg-[var(--accent-hover)] transition-colors"
+                  >
+                    Return to Library
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Right navigation arrow - absolutely positioned */}
+        <button
+          onClick={handleNextPage}
+          className="absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
+          aria-label="Next page"
+        >
+          <svg className="w-8 h-8 opacity-30 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
 
       {/* Bottom bar */}
@@ -223,6 +285,46 @@ export function ReaderView() {
         onClose={() => setBookmarksOpen(false)}
         onNavigate={handleNavigate}
       />
+
+      {/* Floating quick access buttons - always visible */}
+      {!isTocOpen && !isSettingsOpen && !isBookmarksOpen && (
+        <div
+          className="absolute bottom-20 right-4 z-40 flex flex-col gap-2"
+          onClick={(e) => e.stopPropagation()}
+          onMouseMove={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="p-2.5 rounded-full bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all shadow-md border border-[var(--border)]"
+            aria-label="Open settings (S)"
+            title="Settings (S)"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setTocOpen(true)}
+            className="p-2.5 rounded-full bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all shadow-md border border-[var(--border)]"
+            aria-label="Table of contents (T)"
+            title="Table of Contents (T)"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setBookmarksOpen(true)}
+            className="p-2.5 rounded-full bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all shadow-md border border-[var(--border)]"
+            aria-label="Bookmarks (B)"
+            title="Bookmarks (B)"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Loading overlay */}
       {isLoading && (

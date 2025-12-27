@@ -67,7 +67,7 @@ declare module 'epubjs' {
   // Event handler types for Rendition
   export type LocationChangedHandler = (location: Location) => void;
   export type RenderedHandler = (section: unknown) => void;
-  export type ClickHandler = (event: MouseEvent) => void;
+  export type MouseEventHandler = (event: MouseEvent) => void;
 
   export interface Rendition {
     display: (target?: string) => Promise<void>;
@@ -75,11 +75,15 @@ declare module 'epubjs' {
     prev: () => Promise<void>;
     on(event: 'locationChanged', callback: LocationChangedHandler): void;
     on(event: 'rendered', callback: RenderedHandler): void;
-    on(event: 'click', callback: ClickHandler): void;
+    on(event: 'click', callback: MouseEventHandler): void;
+    on(event: 'mousedown', callback: MouseEventHandler): void;
+    on(event: 'mouseup', callback: MouseEventHandler): void;
     on(event: string, callback: (...args: unknown[]) => void): void;
     off(event: 'locationChanged', callback: LocationChangedHandler): void;
     off(event: 'rendered', callback: RenderedHandler): void;
-    off(event: 'click', callback: ClickHandler): void;
+    off(event: 'click', callback: MouseEventHandler): void;
+    off(event: 'mousedown', callback: MouseEventHandler): void;
+    off(event: 'mouseup', callback: MouseEventHandler): void;
     off(event: string, callback: (...args: unknown[]) => void): void;
     themes: {
       default: (rules: Record<string, Record<string, string>>) => void;

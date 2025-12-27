@@ -1,10 +1,10 @@
-import { forwardRef, useEffect, useRef, useState, useCallback, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useRef, useCallback, useImperativeHandle } from 'react';
 import ePub, { type Book as EpubBook, type Rendition, type Location } from 'epubjs';
 import { useReaderStore, useSettingsStore, useLibraryStore, toast } from '../../stores';
 import type { Book, TocItem } from '../../types';
 import { getTableOfContents } from '../../utils/epubParser';
 import { readBookFile } from '../../utils/fileSystem';
-import { getThemeColors, UI_CONSTANTS } from '../../constants';
+import { getThemeColors } from '../../constants';
 
 interface EpubRendererProps {
   book: Book;
@@ -37,8 +37,6 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   // Store book.id in ref for callbacks
   const bookIdRef = useRef(book.id);
   bookIdRef.current = book.id;
-
-  const [isInitialized, setIsInitialized] = useState(false);
 
   const applyStyles = useCallback((rendition: Rendition) => {
     // Get theme colors
@@ -114,8 +112,17 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       if (!epubRef.current || !location.start || !isActive) return;
 
       const cfi = location.start.cfi;
-      const percentage = epubRef.current.locations.percentageFromCfi(cfi);
-      const progress = Math.round(percentage * 100);
+
+      // Calculate progress - handle case when locations aren't generated yet
+      let progress = 0;
+      try {
+        if (epubRef.current.locations.length() > 0) {
+          const percentage = epubRef.current.locations.percentageFromCfi(cfi);
+          progress = Math.round((percentage || 0) * 100);
+        }
+      } catch {
+        // Locations not ready yet, progress stays 0
+      }
 
       // Get current page info
       const currentPage = location.start.displayed?.page || 1;
@@ -130,21 +137,6 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       );
       if (chapter) {
         setCurrentChapter(chapter.label);
-      }
-    };
-
-    const handleClick = (e: MouseEvent) => {
-      if (!currentContainer || !renditionRef.current) return;
-
-      const rect = currentContainer.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const width = rect.width;
-
-      // Click zones: left third = prev, right third = next
-      if (x < width * UI_CONSTANTS.CLICK_ZONE_PREV) {
-        renditionRef.current.prev();
-      } else if (x > width * UI_CONSTANTS.CLICK_ZONE_NEXT) {
-        renditionRef.current.next();
       }
     };
 
@@ -186,16 +178,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         // Apply styles
         applyStyles(rendition);
 
-        // Generate locations for progress tracking
-        await epub.locations.generate(1024);
-        if (!isActive) {
-          epub.destroy();
-          return;
-        }
-
-        setTotalLocations(epub.locations.length());
-
-        // Display at last position or beginning
+        // Display at last position or beginning FIRST (before generating locations)
         if (book.currentLocation) {
           await rendition.display(book.currentLocation);
         } else {
@@ -207,15 +190,21 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
           return;
         }
 
-        // Set up event handlers
+        // Set up event handlers immediately so user can start reading
         rendition.on('locationChanged', handleLocationChange);
         rendition.on('rendered', () => applyStyles(rendition));
-        rendition.on('click', handleClick);
 
-        // Start reading session
+        // Start reading session and hide loading - book is now visible
         startSession();
-        setIsInitialized(true);
         setLoading(false);
+
+        // Generate locations in background (for progress tracking)
+        // Use larger chunk size (2048) for faster generation
+        epub.locations.generate(2048).then(() => {
+          if (isActive) {
+            setTotalLocations(epub.locations.length());
+          }
+        });
       } catch (error) {
         if (!isActive) return;
         console.error('Failed to load EPUB:', error);
