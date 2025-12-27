@@ -75,6 +75,10 @@ export const useLibraryStore = create<LibraryState>()(
           books: state.books.filter((book) => book.id !== id),
           bookmarks: state.bookmarks.filter((b) => b.bookId !== id),
           highlights: state.highlights.filter((h) => h.bookId !== id),
+          collections: state.collections.map((collection) => ({
+            ...collection,
+            bookIds: collection.bookIds.filter((bookId) => bookId !== id),
+          })),
         }));
       },
 

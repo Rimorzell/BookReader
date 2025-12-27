@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useCallback, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useRef, useCallback, useImperativeHandle, useState, useMemo } from 'react';
 import ePub, { type Book as EpubBook, type Rendition, type Location } from 'epubjs';
 import { useReaderStore, useSettingsStore, useLibraryStore, toast } from '../../stores';
 import type { Book, TocItem, HighlightColor } from '../../types';
@@ -11,6 +11,7 @@ interface SelectionInfo {
   text: string;
   cfiRange: string;
   position: { x: number; y: number };
+  existingHighlightId?: string;
 }
 
 interface EpubRendererProps {
@@ -18,12 +19,30 @@ interface EpubRendererProps {
   onTocLoaded: (toc: TocItem[]) => void;
 }
 
+type AnnotatedRendition = Rendition & {
+  annotations: {
+    add: (...args: unknown[]) => void;
+    remove: (...args: unknown[]) => void;
+  };
+  on: (event: string, callback: (...args: unknown[]) => void) => void;
+};
+
 export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   ({ book, onTocLoaded }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const epubRef = useRef<EpubBook | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
+  const HIGHLIGHT_COLORS = useMemo<Record<HighlightColor, string>>(
+    () => ({
+      yellow: 'rgba(254, 240, 138, 0.5)',
+      green: 'rgba(187, 247, 208, 0.5)',
+      blue: 'rgba(191, 219, 254, 0.5)',
+      pink: 'rgba(251, 207, 232, 0.5)',
+      purple: 'rgba(221, 214, 254, 0.5)',
+    }),
+    []
+  );
 
   // Store callbacks in refs to avoid re-triggering initialization effect
   const onTocLoadedRef = useRef(onTocLoaded);
@@ -39,7 +58,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   } = useReaderStore();
 
   const { settings } = useSettingsStore();
-  const { updateReadingProgress, addHighlight, getBookHighlights } = useLibraryStore();
+  const { updateReadingProgress, addHighlight, getBookHighlights, removeHighlight } = useLibraryStore();
   const readerSettings = settings.reader;
 
   // Store book.id in ref for callbacks
@@ -72,6 +91,32 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     });
   }, [readerSettings]);
 
+  const getAnnotatedRendition = useCallback(() => {
+    return renditionRef.current as AnnotatedRendition | null;
+  }, []);
+
+  const removeAnnotation = useCallback((rendition: AnnotatedRendition, cfi: string) => {
+    try {
+      rendition.annotations.remove(cfi, 'highlight', 'hl');
+    } catch {
+      // Ignore missing annotations
+    }
+  }, []);
+
+  const clearBrowserSelection = useCallback(() => {
+    try {
+      const iframe = containerRef.current?.querySelector('iframe') as HTMLIFrameElement | null;
+      iframe?.contentWindow?.getSelection()?.removeAllRanges();
+    } catch {
+      // ignore
+    }
+    try {
+      window.getSelection()?.removeAllRanges();
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const goNext = useCallback(() => {
     renditionRef.current?.next();
   }, []);
@@ -102,11 +147,51 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     }
   }, []);
 
+  const handleRemoveHighlight = useCallback(() => {
+    const rendition = getAnnotatedRendition();
+    if (!selection || !rendition || !selection.existingHighlightId) return;
+
+    const existing = getBookHighlights(bookIdRef.current).find((h) => h.id === selection.existingHighlightId);
+    const targetCfi = existing?.startLocation || selection.cfiRange;
+
+    removeAnnotation(rendition, targetCfi);
+    removeAnnotation(rendition, selection.cfiRange);
+    removeHighlight(selection.existingHighlightId);
+    clearBrowserSelection();
+    setSelection(null);
+  }, [clearBrowserSelection, getAnnotatedRendition, getBookHighlights, removeAnnotation, removeHighlight, selection]);
+
+  // Remove any existing highlight at the current selection CFI (used before applying a new one)
+  const clearExistingAnnotation = useCallback(
+    (rendition: AnnotatedRendition, cfi: string) => {
+      const existing = getBookHighlights(bookIdRef.current).find((h) => h.startLocation === cfi);
+      if (existing) {
+        removeAnnotation(rendition, existing.startLocation);
+        removeHighlight(existing.id);
+      } else {
+        removeAnnotation(rendition, cfi);
+      }
+    },
+    [getBookHighlights, removeAnnotation, removeHighlight]
+  );
+
   // Handle highlighting selected text
   const handleHighlight = useCallback((color: HighlightColor) => {
-    if (!selection || !renditionRef.current) return;
+    const rendition = getAnnotatedRendition();
+    if (!selection || !rendition) return;
 
-    // Add highlight to store
+    // If the same color is chosen for an existing highlight, treat as removal
+    if (selection.existingHighlightId) {
+      const existing = getBookHighlights(bookIdRef.current).find(
+        (h) => h.id === selection.existingHighlightId
+      );
+      if (existing?.color === color) {
+        handleRemoveHighlight();
+        return;
+      }
+      removeHighlight(selection.existingHighlightId);
+    }
+
     addHighlight({
       bookId: bookIdRef.current,
       text: selection.text,
@@ -115,54 +200,108 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       color,
     });
 
-    // Apply highlight style in rendition
-    const highlightColors: Record<string, string> = {
-      yellow: 'rgba(254, 240, 138, 0.5)',
-      green: 'rgba(187, 247, 208, 0.5)',
-      blue: 'rgba(191, 219, 254, 0.5)',
-      pink: 'rgba(251, 207, 232, 0.5)',
-      purple: 'rgba(221, 214, 254, 0.5)',
-    };
-
-    renditionRef.current.annotations.add(
+    clearExistingAnnotation(rendition, selection.cfiRange);
+    rendition.annotations.add(
       'highlight',
       selection.cfiRange,
       {},
       undefined,
       'hl',
-      { fill: highlightColors[color] || highlightColors.yellow }
+      { fill: HIGHLIGHT_COLORS[color] || HIGHLIGHT_COLORS.yellow }
     );
 
+    clearBrowserSelection();
     setSelection(null);
-    toast.success('Text highlighted');
-  }, [selection, addHighlight]);
+  }, [
+    HIGHLIGHT_COLORS,
+    addHighlight,
+    clearBrowserSelection,
+    getAnnotatedRendition,
+    getBookHighlights,
+    clearExistingAnnotation,
+    handleRemoveHighlight,
+    removeHighlight,
+    selection,
+  ]);
 
   // Apply existing highlights when rendition is ready
-  const applyExistingHighlights = useCallback((rendition: Rendition) => {
+  const applyExistingHighlights = useCallback((rendition: AnnotatedRendition) => {
     const highlights = getBookHighlights(bookIdRef.current);
-    const highlightColors: Record<string, string> = {
-      yellow: 'rgba(254, 240, 138, 0.5)',
-      green: 'rgba(187, 247, 208, 0.5)',
-      blue: 'rgba(191, 219, 254, 0.5)',
-      pink: 'rgba(251, 207, 232, 0.5)',
-      purple: 'rgba(221, 214, 254, 0.5)',
-    };
 
     highlights.forEach((highlight) => {
       try {
+        removeAnnotation(rendition, highlight.startLocation);
         rendition.annotations.add(
           'highlight',
           highlight.startLocation,
           {},
           undefined,
           'hl',
-          { fill: highlightColors[highlight.color] || highlightColors.yellow }
+          { fill: HIGHLIGHT_COLORS[highlight.color] || HIGHLIGHT_COLORS.yellow }
         );
       } catch {
         // Ignore invalid CFI ranges
       }
     });
-  }, [getBookHighlights]);
+  }, [HIGHLIGHT_COLORS, getBookHighlights, removeAnnotation]);
+
+  // Keep rendition annotations in sync with store updates (additions/removals)
+  useEffect(() => {
+    let previousHighlights = useLibraryStore
+      .getState()
+      .highlights.filter((h) => h.bookId === bookIdRef.current);
+
+    const unsubscribe = useLibraryStore.subscribe((state) => {
+      const highlights = state.highlights.filter((h) => h.bookId === bookIdRef.current);
+      const rendition = getAnnotatedRendition();
+      if (!rendition) {
+        previousHighlights = highlights;
+        return;
+      }
+
+      const prevMap = new Map(previousHighlights.map((h) => [h.id, h]));
+      const nextMap = new Map(highlights.map((h) => [h.id, h]));
+
+      // Remove deleted highlights
+      prevMap.forEach((highlight, id) => {
+        if (!nextMap.has(id)) {
+          try {
+            rendition.annotations.remove(highlight.startLocation);
+          } catch {
+            // Ignore annotation errors
+          }
+        }
+      });
+
+      // Add or update new/changed highlights
+      nextMap.forEach((highlight, id) => {
+        const prev = prevMap.get(id);
+        if (!prev || prev.startLocation !== highlight.startLocation || prev.color !== highlight.color) {
+          try {
+            rendition.annotations.remove(highlight.startLocation);
+          } catch {
+            // Ignore missing annotations
+          }
+          try {
+            rendition.annotations.add(
+              'highlight',
+              highlight.startLocation,
+              {},
+              undefined,
+              'hl',
+              { fill: HIGHLIGHT_COLORS[highlight.color] || HIGHLIGHT_COLORS.yellow }
+            );
+          } catch {
+            // Ignore invalid CFI ranges
+          }
+        }
+      });
+
+      previousHighlights = highlights;
+    });
+
+    return unsubscribe;
+  }, [getAnnotatedRendition, HIGHLIGHT_COLORS]);
 
   useImperativeHandle(ref, () => ({
     goNext,
@@ -261,11 +400,11 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         }
 
         // Set up event handlers immediately so user can start reading
-        rendition.on('locationChanged', handleLocationChange);
+        rendition.on('relocated', handleLocationChange as unknown as (...args: unknown[]) => void);
         rendition.on('rendered', () => applyStyles(rendition));
 
         // Handle text selection for highlighting
-        rendition.on('selected', (cfiRange: string, contents: { window: Window }) => {
+        rendition.on('selected', ((cfiRange: string, contents: { window: Window }) => {
           const selectedText = contents.window.getSelection()?.toString().trim();
           if (selectedText && selectedText.length > 0) {
             // Get selection position for popup
@@ -278,9 +417,14 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
               const iframe = containerRef.current?.querySelector('iframe');
               const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
 
+              const existing = getBookHighlights(bookIdRef.current).find(
+                (h) => h.startLocation === cfiRange
+              );
+
               setSelection({
                 text: selectedText,
                 cfiRange,
+                existingHighlightId: existing?.id,
                 position: {
                   x: iframeRect.left + rect.left + rect.width / 2,
                   y: iframeRect.top + rect.top,
@@ -288,10 +432,10 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
               });
             }
           }
-        });
+        }) as unknown as (...args: unknown[]) => void);
 
         // Apply existing highlights
-        applyExistingHighlights(rendition);
+        applyExistingHighlights(rendition as AnnotatedRendition);
 
         // Start reading session and hide loading - book is now visible
         startSession();
@@ -364,7 +508,12 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         <HighlightPopup
           position={selection.position}
           onHighlight={handleHighlight}
-          onClose={() => setSelection(null)}
+          onRemove={handleRemoveHighlight}
+          canRemove={!!selection.existingHighlightId}
+          onClose={() => {
+            clearBrowserSelection();
+            setSelection(null);
+          }}
         />
       )}
     </>
