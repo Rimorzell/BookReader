@@ -236,12 +236,7 @@ export function ReaderView() {
       </div>
 
       {/* Bottom bar */}
-      <ReaderBottomBar
-        visible={isUIVisible}
-        onPrevPage={handlePrevPage}
-        onNextPage={handleNextPage}
-        onScrubProgress={handleScrubProgress}
-      />
+      <ReaderBottomBar visible={isUIVisible} onScrubProgress={handleScrubProgress} />
 
       {/* Table of Contents */}
       <TableOfContents
@@ -268,7 +263,7 @@ export function ReaderView() {
       {/* Floating quick access buttons - positioned in top right */}
       {!isTocOpen && !isSettingsOpen && !isBookmarksOpen && (
         <div
-          className="absolute top-4 right-4 z-30 flex items-center gap-1"
+          className="absolute top-16 right-4 md:top-20 z-50 flex items-center gap-1"
           onClick={(e) => e.stopPropagation()}
           onMouseMove={(e) => e.stopPropagation()}
         >

@@ -11,6 +11,7 @@ interface SelectionInfo {
   text: string;
   cfiRange: string;
   position: { x: number; y: number };
+  existingHighlightId?: string;
 }
 
 interface EpubRendererProps {
@@ -57,7 +58,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   } = useReaderStore();
 
   const { settings } = useSettingsStore();
-  const { updateReadingProgress, addHighlight, getBookHighlights } = useLibraryStore();
+  const { updateReadingProgress, addHighlight, getBookHighlights, removeHighlight } = useLibraryStore();
   const readerSettings = settings.reader;
 
   // Store book.id in ref for callbacks
@@ -92,6 +93,20 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
   const getAnnotatedRendition = useCallback(() => {
     return renditionRef.current as AnnotatedRendition | null;
+  }, []);
+
+  const clearBrowserSelection = useCallback(() => {
+    try {
+      const iframe = containerRef.current?.querySelector('iframe') as HTMLIFrameElement | null;
+      iframe?.contentWindow?.getSelection()?.removeAllRanges();
+    } catch {
+      // ignore
+    }
+    try {
+      window.getSelection()?.removeAllRanges();
+    } catch {
+      // ignore
+    }
   }, []);
 
   const goNext = useCallback(() => {
@@ -129,7 +144,11 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     const rendition = getAnnotatedRendition();
     if (!selection || !rendition) return;
 
-    // Add highlight to store
+    // Replace existing highlight if present
+    if (selection.existingHighlightId) {
+      removeHighlight(selection.existingHighlightId);
+    }
+
     addHighlight({
       bookId: bookIdRef.current,
       text: selection.text,
@@ -148,9 +167,24 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       { fill: HIGHLIGHT_COLORS[color] || HIGHLIGHT_COLORS.yellow }
     );
 
+    clearBrowserSelection();
     setSelection(null);
-    toast.success('Text highlighted');
-  }, [HIGHLIGHT_COLORS, addHighlight, getAnnotatedRendition, selection]);
+  }, [HIGHLIGHT_COLORS, addHighlight, clearBrowserSelection, getAnnotatedRendition, removeHighlight, selection]);
+
+  const handleRemoveHighlight = useCallback(() => {
+    const rendition = getAnnotatedRendition();
+    if (!selection || !rendition || !selection.existingHighlightId) return;
+
+    try {
+      rendition.annotations.remove(selection.cfiRange);
+    } catch {
+      // ignore missing annotation
+    }
+
+    removeHighlight(selection.existingHighlightId);
+    clearBrowserSelection();
+    setSelection(null);
+  }, [clearBrowserSelection, getAnnotatedRendition, removeHighlight, selection]);
 
   // Apply existing highlights when rendition is ready
   const applyExistingHighlights = useCallback((rendition: AnnotatedRendition) => {
@@ -328,7 +362,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         }
 
         // Set up event handlers immediately so user can start reading
-        rendition.on('locationChanged', handleLocationChange);
+        rendition.on('relocated', handleLocationChange as unknown as (...args: unknown[]) => void);
         rendition.on('rendered', () => applyStyles(rendition));
 
         // Handle text selection for highlighting
@@ -345,9 +379,14 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
               const iframe = containerRef.current?.querySelector('iframe');
               const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
 
+              const existing = getBookHighlights(bookIdRef.current).find(
+                (h) => h.startLocation === cfiRange
+              );
+
               setSelection({
                 text: selectedText,
                 cfiRange,
+                existingHighlightId: existing?.id,
                 position: {
                   x: iframeRect.left + rect.left + rect.width / 2,
                   y: iframeRect.top + rect.top,
@@ -431,7 +470,12 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         <HighlightPopup
           position={selection.position}
           onHighlight={handleHighlight}
-          onClose={() => setSelection(null)}
+          onRemove={handleRemoveHighlight}
+          canRemove={!!selection.existingHighlightId}
+          onClose={() => {
+            clearBrowserSelection();
+            setSelection(null);
+          }}
         />
       )}
     </>
