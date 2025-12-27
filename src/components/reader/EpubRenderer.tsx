@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState, useCallback, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useRef, useCallback, useImperativeHandle } from 'react';
 import ePub, { type Book as EpubBook, type Rendition, type Location } from 'epubjs';
 import { useReaderStore, useSettingsStore, useLibraryStore, toast } from '../../stores';
 import type { Book, TocItem } from '../../types';
@@ -37,8 +37,6 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   // Store book.id in ref for callbacks
   const bookIdRef = useRef(book.id);
   bookIdRef.current = book.id;
-
-  const [isInitialized, setIsInitialized] = useState(false);
 
   const applyStyles = useCallback((rendition: Rendition) => {
     // Get theme colors
@@ -214,7 +212,6 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
         // Start reading session
         startSession();
-        setIsInitialized(true);
         setLoading(false);
       } catch (error) {
         if (!isActive) return;
