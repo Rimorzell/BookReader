@@ -6,6 +6,8 @@ interface HighlightPopupProps {
   onHighlight: (color: HighlightColor) => void;
   onRemove?: () => void;
   canRemove?: boolean;
+  onClearAll?: () => void;
+  hasHighlights?: boolean;
   onClose: () => void;
 }
 
@@ -17,7 +19,7 @@ const HIGHLIGHT_COLORS: { color: HighlightColor; bg: string; label: string }[] =
   { color: 'purple', bg: '#ddd6fe', label: 'Purple' },
 ];
 
-export function HighlightPopup({ position, onHighlight, onRemove, canRemove, onClose }: HighlightPopupProps) {
+export function HighlightPopup({ position, onHighlight, onRemove, canRemove, onClearAll, hasHighlights, onClose }: HighlightPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,6 +69,16 @@ export function HighlightPopup({ position, onHighlight, onRemove, canRemove, onC
           className="ml-2 px-2 py-1 text-xs rounded-md border border-[var(--border)] text-[var(--text-secondary)] hover:text-red-500 hover:border-red-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Remove
+        </button>
+      )}
+      {onClearAll && (
+        <button
+          onClick={onClearAll}
+          disabled={!hasHighlights}
+          className="ml-1 px-2 py-1 text-xs rounded-md border border-[var(--border)] text-[var(--text-secondary)] hover:text-red-500 hover:border-red-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          title="Clear all highlights in book"
+        >
+          Clear All
         </button>
       )}
     </div>

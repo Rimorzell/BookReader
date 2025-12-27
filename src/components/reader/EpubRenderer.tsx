@@ -58,7 +58,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   } = useReaderStore();
 
   const { settings } = useSettingsStore();
-  const { updateReadingProgress, addHighlight, getBookHighlights, removeHighlight } = useLibraryStore();
+  const { updateReadingProgress, addHighlight, getBookHighlights, removeHighlight, clearAllHighlights } = useLibraryStore();
   const readerSettings = settings.reader;
 
   // Store book.id in ref for callbacks
@@ -161,6 +161,27 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     setSelection(null);
   }, [clearBrowserSelection, getAnnotatedRendition, getBookHighlights, removeAnnotation, removeHighlight, selection]);
 
+  // Handle clearing all highlights for this book
+  const handleClearAllHighlights = useCallback(() => {
+    const rendition = getAnnotatedRendition();
+    if (!rendition) return;
+
+    // Remove all annotations from the rendition
+    const highlights = getBookHighlights(bookIdRef.current);
+    highlights.forEach((highlight) => {
+      try {
+        rendition.annotations.remove(highlight.startLocation, 'highlight', 'hl');
+      } catch {
+        // Ignore errors when removing annotations
+      }
+    });
+
+    // Clear all highlights from the store
+    clearAllHighlights(bookIdRef.current);
+    clearBrowserSelection();
+    setSelection(null);
+  }, [clearAllHighlights, clearBrowserSelection, getAnnotatedRendition, getBookHighlights]);
+
   // Handle highlighting selected text
   const handleHighlight = useCallback((color: HighlightColor) => {
     const rendition = getAnnotatedRendition();
@@ -175,8 +196,16 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         handleRemoveHighlight();
         return;
       }
+      // Remove the existing annotation before adding a new one (prevents stacking)
+      if (existing) {
+        removeAnnotation(rendition, existing.startLocation);
+      }
+      removeAnnotation(rendition, selection.cfiRange);
       removeHighlight(selection.existingHighlightId);
     }
+
+    // Remove any existing annotation at this CFI first to prevent stacking
+    removeAnnotation(rendition, selection.cfiRange);
 
     addHighlight({
       bookId: bookIdRef.current,
@@ -186,7 +215,6 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       color,
     });
 
-    removeAnnotation(rendition, selection.cfiRange);
     rendition.annotations.add(
       'highlight',
       selection.cfiRange,
@@ -205,6 +233,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     getAnnotatedRendition,
     getBookHighlights,
     handleRemoveHighlight,
+    removeAnnotation,
     removeHighlight,
     selection,
   ]);
@@ -495,6 +524,8 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
           onHighlight={handleHighlight}
           onRemove={handleRemoveHighlight}
           canRemove={!!selection.existingHighlightId}
+          onClearAll={handleClearAllHighlights}
+          hasHighlights={getBookHighlights(book.id).length > 0}
           onClose={() => {
             clearBrowserSelection();
             setSelection(null);

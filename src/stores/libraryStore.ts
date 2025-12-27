@@ -36,6 +36,7 @@ interface LibraryState {
   updateHighlight: (id: string, updates: Partial<Highlight>) => void;
   removeHighlight: (id: string) => void;
   getBookHighlights: (bookId: string) => Highlight[];
+  clearAllHighlights: (bookId: string) => void;
 }
 
 export const useLibraryStore = create<LibraryState>()(
@@ -215,12 +216,25 @@ export const useLibraryStore = create<LibraryState>()(
 
       // Highlight actions
       addHighlight: (highlightData) => {
+        // Remove any existing highlight at the same location to prevent stacking
+        const existingHighlights = get().highlights.filter(
+          (h) => h.bookId === highlightData.bookId && h.startLocation === highlightData.startLocation
+        );
+
         const highlight: Highlight = {
           id: uuidv4(),
           ...highlightData,
           dateCreated: Date.now(),
         };
-        set((state) => ({ highlights: [...state.highlights, highlight] }));
+
+        set((state) => ({
+          highlights: [
+            ...state.highlights.filter(
+              (h) => !existingHighlights.some((e) => e.id === h.id)
+            ),
+            highlight,
+          ],
+        }));
         return highlight;
       },
 
@@ -240,6 +254,12 @@ export const useLibraryStore = create<LibraryState>()(
 
       getBookHighlights: (bookId) => {
         return get().highlights.filter((h) => h.bookId === bookId);
+      },
+
+      clearAllHighlights: (bookId) => {
+        set((state) => ({
+          highlights: state.highlights.filter((h) => h.bookId !== bookId),
+        }));
       },
     }),
     {
