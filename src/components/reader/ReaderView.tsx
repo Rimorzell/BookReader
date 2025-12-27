@@ -263,7 +263,7 @@ export function ReaderView() {
       {/* Floating quick access buttons - positioned in top right */}
       {!isTocOpen && !isSettingsOpen && !isBookmarksOpen && (
         <div
-          className="absolute top-16 right-4 md:top-20 z-50 flex items-center gap-1"
+          className="absolute top-16 left-4 md:top-20 z-50 flex items-center gap-1"
           onClick={(e) => e.stopPropagation()}
           onMouseMove={(e) => e.stopPropagation()}
         >

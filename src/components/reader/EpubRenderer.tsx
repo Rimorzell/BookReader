@@ -139,13 +139,35 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     }
   }, []);
 
+  const handleRemoveHighlight = useCallback(() => {
+    const rendition = getAnnotatedRendition();
+    if (!selection || !rendition || !selection.existingHighlightId) return;
+
+    try {
+      rendition.annotations.remove(selection.cfiRange);
+    } catch {
+      // ignore missing annotation
+    }
+
+    removeHighlight(selection.existingHighlightId);
+    clearBrowserSelection();
+    setSelection(null);
+  }, [clearBrowserSelection, getAnnotatedRendition, removeHighlight, selection]);
+
   // Handle highlighting selected text
   const handleHighlight = useCallback((color: HighlightColor) => {
     const rendition = getAnnotatedRendition();
     if (!selection || !rendition) return;
 
-    // Replace existing highlight if present
+    // If the same color is chosen for an existing highlight, treat as removal
     if (selection.existingHighlightId) {
+      const existing = getBookHighlights(bookIdRef.current).find(
+        (h) => h.id === selection.existingHighlightId
+      );
+      if (existing?.color === color) {
+        handleRemoveHighlight();
+        return;
+      }
       removeHighlight(selection.existingHighlightId);
     }
 
@@ -169,22 +191,16 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
     clearBrowserSelection();
     setSelection(null);
-  }, [HIGHLIGHT_COLORS, addHighlight, clearBrowserSelection, getAnnotatedRendition, removeHighlight, selection]);
-
-  const handleRemoveHighlight = useCallback(() => {
-    const rendition = getAnnotatedRendition();
-    if (!selection || !rendition || !selection.existingHighlightId) return;
-
-    try {
-      rendition.annotations.remove(selection.cfiRange);
-    } catch {
-      // ignore missing annotation
-    }
-
-    removeHighlight(selection.existingHighlightId);
-    clearBrowserSelection();
-    setSelection(null);
-  }, [clearBrowserSelection, getAnnotatedRendition, removeHighlight, selection]);
+  }, [
+    HIGHLIGHT_COLORS,
+    addHighlight,
+    clearBrowserSelection,
+    getAnnotatedRendition,
+    getBookHighlights,
+    handleRemoveHighlight,
+    removeHighlight,
+    selection,
+  ]);
 
   // Apply existing highlights when rendition is ready
   const applyExistingHighlights = useCallback((rendition: AnnotatedRendition) => {
