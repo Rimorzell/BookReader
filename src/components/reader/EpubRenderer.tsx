@@ -161,20 +161,6 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     setSelection(null);
   }, [clearBrowserSelection, getAnnotatedRendition, getBookHighlights, removeAnnotation, removeHighlight, selection]);
 
-  // Remove any existing highlight at the current selection CFI (used before applying a new one)
-  const clearExistingAnnotation = useCallback(
-    (rendition: AnnotatedRendition, cfi: string) => {
-      const existing = getBookHighlights(bookIdRef.current).find((h) => h.startLocation === cfi);
-      if (existing) {
-        removeAnnotation(rendition, existing.startLocation);
-        removeHighlight(existing.id);
-      } else {
-        removeAnnotation(rendition, cfi);
-      }
-    },
-    [getBookHighlights, removeAnnotation, removeHighlight]
-  );
-
   // Handle highlighting selected text
   const handleHighlight = useCallback((color: HighlightColor) => {
     const rendition = getAnnotatedRendition();
@@ -200,7 +186,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       color,
     });
 
-    clearExistingAnnotation(rendition, selection.cfiRange);
+    removeAnnotation(rendition, selection.cfiRange);
     rendition.annotations.add(
       'highlight',
       selection.cfiRange,
@@ -218,7 +204,6 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     clearBrowserSelection,
     getAnnotatedRendition,
     getBookHighlights,
-    clearExistingAnnotation,
     handleRemoveHighlight,
     removeHighlight,
     selection,
@@ -230,7 +215,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
     highlights.forEach((highlight) => {
       try {
-        removeAnnotation(rendition, highlight.startLocation);
+        rendition.annotations.remove(highlight.startLocation);
         rendition.annotations.add(
           'highlight',
           highlight.startLocation,
@@ -243,7 +228,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         // Ignore invalid CFI ranges
       }
     });
-  }, [HIGHLIGHT_COLORS, getBookHighlights, removeAnnotation]);
+  }, [getBookHighlights, HIGHLIGHT_COLORS]);
 
   // Keep rendition annotations in sync with store updates (additions/removals)
   useEffect(() => {
