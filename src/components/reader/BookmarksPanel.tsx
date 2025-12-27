@@ -85,7 +85,10 @@ export function BookmarksPanel({ book, isOpen, onClose, onNavigate }: BookmarksP
                   No bookmarks yet.
                 </p>
                 <button
-                  onClick={handleAddBookmark}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddBookmark();
+                  }}
                   disabled={!currentLocation}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -99,7 +102,10 @@ export function BookmarksPanel({ book, isOpen, onClose, onNavigate }: BookmarksP
               <div className="space-y-2">
                 {/* Add bookmark button at top of list */}
                 <button
-                  onClick={handleAddBookmark}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddBookmark();
+                  }}
                   disabled={isCurrentLocationBookmarked || !currentLocation}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[var(--border)] disabled:hover:text-[var(--text-secondary)] transition-colors"
                 >

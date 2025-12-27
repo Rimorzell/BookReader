@@ -300,57 +300,16 @@ export function ReaderView() {
         onNavigate={handleNavigate}
       />
 
-      {/* Floating bookmark button - always visible for quick access */}
-      {!isTocOpen && !isSettingsOpen && !isBookmarksOpen && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleToggleBookmark();
-          }}
-          className={`absolute top-16 right-20 z-30 p-2.5 rounded-lg transition-all border ${
-            isCurrentLocationBookmarked
-              ? 'bg-[var(--accent)]/20 text-[var(--accent)] border-[var(--accent)]/50'
-              : 'bg-[var(--bg-secondary)]/60 text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] border-[var(--border)]/50'
-          }`}
-          aria-label={isCurrentLocationBookmarked ? 'Remove bookmark' : 'Add bookmark'}
-          title={isCurrentLocationBookmarked ? 'Remove bookmark' : 'Bookmark this page'}
-        >
-          <svg
-            className="w-5 h-5"
-            fill={isCurrentLocationBookmarked ? 'currentColor' : 'none'}
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-            />
-          </svg>
-        </button>
-      )}
-
-      {/* Floating quick access buttons - positioned on right side, clear of navigation */}
+      {/* Floating quick access buttons - positioned in top right */}
       {!isTocOpen && !isSettingsOpen && !isBookmarksOpen && (
         <div
-          className="absolute right-20 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2"
+          className="absolute top-4 right-4 z-30 flex items-center gap-1"
           onClick={(e) => e.stopPropagation()}
           onMouseMove={(e) => e.stopPropagation()}
         >
           <button
-            onClick={() => setSettingsOpen(true)}
-            className="p-2 rounded-lg bg-[var(--bg-secondary)]/60 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all border border-[var(--border)]/50"
-            aria-label="Settings (S)"
-            title="Settings (S)"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-            </svg>
-          </button>
-          <button
             onClick={() => setTocOpen(true)}
-            className="p-2 rounded-lg bg-[var(--bg-secondary)]/60 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all border border-[var(--border)]/50"
+            className="p-2 rounded-lg bg-[var(--bg-secondary)]/70 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
             aria-label="Contents (T)"
             title="Table of Contents (T)"
           >
@@ -360,12 +319,22 @@ export function ReaderView() {
           </button>
           <button
             onClick={() => setBookmarksOpen(true)}
-            className="p-2 rounded-lg bg-[var(--bg-secondary)]/60 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all border border-[var(--border)]/50"
+            className="p-2 rounded-lg bg-[var(--bg-secondary)]/70 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
             aria-label="Bookmarks (B)"
             title="Bookmarks (B)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="p-2 rounded-lg bg-[var(--bg-secondary)]/70 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
+            aria-label="Settings (S)"
+            title="Settings (S)"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
             </svg>
           </button>
         </div>
