@@ -112,8 +112,17 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       if (!epubRef.current || !location.start || !isActive) return;
 
       const cfi = location.start.cfi;
-      const percentage = epubRef.current.locations.percentageFromCfi(cfi);
-      const progress = Math.round(percentage * 100);
+
+      // Calculate progress - handle case when locations aren't generated yet
+      let progress = 0;
+      try {
+        if (epubRef.current.locations.length() > 0) {
+          const percentage = epubRef.current.locations.percentageFromCfi(cfi);
+          progress = Math.round((percentage || 0) * 100);
+        }
+      } catch {
+        // Locations not ready yet, progress stays 0
+      }
 
       // Get current page info
       const currentPage = location.start.displayed?.page || 1;

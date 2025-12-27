@@ -205,11 +205,11 @@ export function ReaderView() {
       />
 
       {/* Reader content with navigation arrows */}
-      <div className="h-full pt-0 flex" data-reader-content>
-        {/* Left navigation arrow */}
+      <div className="h-full pt-0 relative" data-reader-content>
+        {/* Left navigation arrow - absolutely positioned */}
         <button
           onClick={handlePrevPage}
-          className="flex-shrink-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group"
+          className="absolute left-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
           aria-label="Previous page"
         >
           <svg className="w-8 h-8 opacity-30 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -217,34 +217,36 @@ export function ReaderView() {
           </svg>
         </button>
 
-        {/* Book content - constrained width for book-like format */}
-        <div className="flex-1 h-full max-w-3xl mx-auto">
-          {book.fileType === 'epub' && (
-            <EpubRenderer ref={rendererRef} book={book} onTocLoaded={handleTocLoaded} />
-          )}
-          {book.fileType === 'pdf' && (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <svg className="w-16 h-16 mx-auto mb-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <h2 className="text-lg font-medium text-[var(--text-primary)] mb-2">PDF Not Supported</h2>
-                <p className="text-[var(--text-secondary)] mb-4">PDF files cannot be opened yet. Only EPUB files are supported.</p>
-                <button
-                  onClick={() => navigate('/')}
-                  className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:bg-[var(--accent-hover)] transition-colors"
-                >
-                  Return to Library
-                </button>
+        {/* Book content - centered with padding for arrows */}
+        <div className="h-full flex items-center justify-center px-16">
+          <div className="h-full w-full max-w-3xl">
+            {book.fileType === 'epub' && (
+              <EpubRenderer ref={rendererRef} book={book} onTocLoaded={handleTocLoaded} />
+            )}
+            {book.fileType === 'pdf' && (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <svg className="w-16 h-16 mx-auto mb-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h2 className="text-lg font-medium text-[var(--text-primary)] mb-2">PDF Not Supported</h2>
+                  <p className="text-[var(--text-secondary)] mb-4">PDF files cannot be opened yet. Only EPUB files are supported.</p>
+                  <button
+                    onClick={() => navigate('/')}
+                    className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:bg-[var(--accent-hover)] transition-colors"
+                  >
+                    Return to Library
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Right navigation arrow */}
+        {/* Right navigation arrow - absolutely positioned */}
         <button
           onClick={handleNextPage}
-          className="flex-shrink-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group"
+          className="absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
           aria-label="Next page"
         >
           <svg className="w-8 h-8 opacity-30 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
