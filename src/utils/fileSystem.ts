@@ -180,5 +180,5 @@ export function getFileExtension(filename: string): string {
 
 export function isValidBookFile(filename: string): boolean {
   const ext = getFileExtension(filename);
-  return ext === 'epub' || ext === 'pdf';
+  return ext === 'epub';
 }
