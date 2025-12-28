@@ -6,7 +6,7 @@ import { ReaderBottomBar } from './ReaderBottomBar';
 import { TableOfContents } from './TableOfContents';
 import { ReaderSettings } from './ReaderSettings';
 import { BookmarksPanel } from './BookmarksPanel';
-import { useReaderStore, useLibraryStore } from '../../stores';
+import { useReaderStore, useLibraryStore, useSettingsStore } from '../../stores';
 import { UI_CONSTANTS } from '../../constants';
 import type { TocItem } from '../../types';
 
@@ -29,9 +29,26 @@ export function ReaderView() {
     endSession,
     reset,
   } = useReaderStore();
+  const { updateReaderSettings } = useSettingsStore();
 
   const [toc, setToc] = useState<TocItem[]>([]);
   const rendererRef = useRef<EpubRendererRef | null>(null);
+  const recommendedSettings = {
+    theme: 'sepia' as const,
+    fontFamily: 'Georgia',
+    fontSize: 18,
+    lineHeight: 1.8,
+    letterSpacing: 0,
+    textAlign: 'justify' as const,
+    marginHorizontal: 72,
+    marginVertical: 48,
+    maxWidth: 780,
+    paragraphSpacing: 1.25,
+    pageAnimation: 'slide' as const,
+    viewMode: 'paginated' as const,
+    showProgress: true,
+    twoPageSpread: false,
+  };
 
   const book = books.find((b) => b.id === bookId);
 
@@ -183,10 +200,12 @@ export function ReaderView() {
 
   const handlePrevPage = () => {
     rendererRef.current?.goPrev();
+    resetHideTimeout();
   };
 
   const handleNextPage = () => {
     rendererRef.current?.goNext();
+    resetHideTimeout();
   };
 
   const handleScrubProgress = (percentage: number) => {
@@ -203,13 +222,18 @@ export function ReaderView() {
       <ReaderTopBar
         book={book}
         visible={isUIVisible}
+        recommendedSettings={recommendedSettings}
+        onApplyRecommended={() => updateReaderSettings(recommendedSettings)}
       />
 
       {/* Reader content with navigation arrows */}
       <div className="h-full relative" data-reader-content>
         {/* Left navigation arrow - absolutely positioned */}
         <button
-          onClick={handlePrevPage}
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePrevPage();
+          }}
           className="absolute left-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
           aria-label="Previous page"
         >
@@ -229,7 +253,10 @@ export function ReaderView() {
 
         {/* Right navigation arrow - absolutely positioned */}
         <button
-          onClick={handleNextPage}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNextPage();
+          }}
           className="absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
           aria-label="Next page"
         >
