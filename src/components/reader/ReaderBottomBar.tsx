@@ -9,8 +9,12 @@ export function ReaderBottomBar({
   visible,
   onScrubProgress,
 }: ReaderBottomBarProps) {
-  const { progress, currentPage, totalPages } = useReaderStore();
+  const { progress, totalLocations } = useReaderStore();
   const { settings } = useSettingsStore();
+
+  // Calculate current page out of total book pages
+  const currentPage = Math.max(1, Math.round((progress / 100) * totalLocations));
+  const totalPages = totalLocations > 0 ? totalLocations : 1;
 
   const handleProgressScrub = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -44,7 +48,7 @@ export function ReaderBottomBar({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(progress)}
-            aria-valuetext={`${Math.round(progress)}% complete, page ${currentPage} of ${totalPages}`}
+            aria-valuetext={`Page ${currentPage} of ${totalPages}`}
             onClick={handleProgressScrub}
             onKeyDown={handleProgressKeyDown}
           >
@@ -60,10 +64,8 @@ export function ReaderBottomBar({
         </div>
         {/* Page info */}
         {settings.reader.showProgress && (
-          <div className="flex items-center gap-4 text-xs text-[var(--text-secondary)]">
+          <div className="text-xs text-[var(--text-secondary)]">
             <span>Page {currentPage} of {totalPages}</span>
-            <span className="text-[var(--text-muted)]">|</span>
-            <span>{Math.round(progress)}% complete</span>
           </div>
         )}
       </div>

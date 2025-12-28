@@ -18,7 +18,6 @@ export function ReaderView() {
     isUIVisible,
     showUI,
     hideUI,
-    toggleUI,
     isTocOpen,
     setTocOpen,
     isSettingsOpen,
@@ -76,13 +75,18 @@ export function ReaderView() {
       const x = e.clientX - rect.left;
       const width = rect.width;
 
-      // Center third toggles UI
+      // Left/right edges for navigation, center for UI toggle
       if (x > width * UI_CONSTANTS.CLICK_ZONE_PREV && x < width * UI_CONSTANTS.CLICK_ZONE_NEXT) {
-        toggleUI();
-        resetHideTimeout();
+        // If UI is visible, hide it; if hidden, show it
+        if (isUIVisible) {
+          hideUI();
+        } else {
+          showUI();
+          resetHideTimeout();
+        }
       }
     }
-  }, [toggleUI, resetHideTimeout]);
+  }, [isUIVisible, hideUI, showUI, resetHideTimeout]);
 
   // Keyboard shortcuts for quick access
   useEffect(() => {
@@ -260,16 +264,16 @@ export function ReaderView() {
         onNavigate={handleNavigate}
       />
 
-      {/* Floating quick access buttons - positioned in top right */}
-      {!isTocOpen && !isSettingsOpen && !isBookmarksOpen && (
+      {/* Floating quick access buttons - positioned in top right, visible with UI */}
+      {isUIVisible && !isTocOpen && !isSettingsOpen && !isBookmarksOpen && (
         <div
-          className="absolute top-16 left-4 md:top-20 z-50 flex items-center gap-1"
+          className="absolute top-3 right-4 z-50 flex items-center gap-1 transition-all duration-300"
           onClick={(e) => e.stopPropagation()}
           onMouseMove={(e) => e.stopPropagation()}
         >
           <button
             onClick={() => setTocOpen(true)}
-            className="p-2 rounded-lg bg-[var(--bg-secondary)]/70 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
+            className="p-2 rounded-lg bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
             aria-label="Contents (T)"
             title="Table of Contents (T)"
           >
@@ -279,7 +283,7 @@ export function ReaderView() {
           </button>
           <button
             onClick={() => setBookmarksOpen(true)}
-            className="p-2 rounded-lg bg-[var(--bg-secondary)]/70 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
+            className="p-2 rounded-lg bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
             aria-label="Bookmarks (B)"
             title="Bookmarks (B)"
           >
@@ -289,7 +293,7 @@ export function ReaderView() {
           </button>
           <button
             onClick={() => setSettingsOpen(true)}
-            className="p-2 rounded-lg bg-[var(--bg-secondary)]/70 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
+            className="p-2 rounded-lg bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
             aria-label="Settings (S)"
             title="Settings (S)"
           >
