@@ -116,19 +116,20 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       // Calculate progress based on locations if available
       let progress = 0;
       let totalLocs = 0;
+      let currentPage = location.start.displayed?.page || 1;
+      let totalPages = location.start.displayed?.total || 1;
+
       try {
         totalLocs = epubRef.current.locations.length();
         if (totalLocs > 0) {
           const percentage = epubRef.current.locations.percentageFromCfi(cfi);
           progress = Math.round((percentage || 0) * 100);
+          currentPage = Math.max(1, Math.round((percentage || 0) * totalLocs));
+          totalPages = totalLocs;
         }
       } catch {
         // Locations not ready yet, progress stays 0
       }
-
-      // Get current page info from displayed info
-      const currentPage = location.start.displayed?.page || 1;
-      const totalPages = location.start.displayed?.total || 1;
 
       updateLocation(cfi, currentPage, totalPages, progress);
 
@@ -221,9 +222,8 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
             try {
               const percentage = epub.locations.percentageFromCfi(currentLoc.start.cfi);
               const progress = Math.round((percentage || 0) * 100);
-              const currentPage = currentLoc.start.displayed?.page || 1;
-              const totalPages = currentLoc.start.displayed?.total || 1;
-              updateLocation(currentLoc.start.cfi, currentPage, totalPages, progress);
+              const currentPage = Math.max(1, Math.round((percentage || 0) * totalLocs));
+              updateLocation(currentLoc.start.cfi, currentPage, totalLocs || 1, progress);
             } catch {
               // Ignore errors
             }
