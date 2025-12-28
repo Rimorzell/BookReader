@@ -122,13 +122,9 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       try {
         totalLocs = epubRef.current.locations.length();
         if (totalLocs > 0) {
-          const percentage = epubRef.current.locations.percentageFromCfi(cfi) || 0;
-          const locationIndex = epubRef.current.locations.locationFromCfi?.(cfi);
-
-          progress = Math.min(100, Math.max(0, Math.round(percentage * 100)));
-          currentPage = typeof locationIndex === 'number'
-            ? Math.min(totalLocs, Math.max(1, locationIndex + 1))
-            : Math.max(1, Math.floor(percentage * totalLocs) + 1);
+          const percentage = epubRef.current.locations.percentageFromCfi(cfi);
+          progress = Math.round((percentage || 0) * 100);
+          currentPage = Math.max(1, Math.round((percentage || 0) * totalLocs));
           totalPages = totalLocs;
         }
       } catch {
@@ -224,13 +220,9 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
           const currentLoc = (rendition as unknown as { currentLocation: () => Location | null }).currentLocation?.();
           if (currentLoc?.start?.cfi && totalLocs > 0) {
             try {
-              const percentage = epub.locations.percentageFromCfi(currentLoc.start.cfi) || 0;
-              const locationIndex = epub.locations.locationFromCfi?.(currentLoc.start.cfi);
-              const progress = Math.min(100, Math.max(0, Math.round(percentage * 100)));
-              const currentPage = typeof locationIndex === 'number'
-                ? Math.min(totalLocs, Math.max(1, locationIndex + 1))
-                : Math.max(1, Math.floor(percentage * totalLocs) + 1);
-
+              const percentage = epub.locations.percentageFromCfi(currentLoc.start.cfi);
+              const progress = Math.round((percentage || 0) * 100);
+              const currentPage = Math.max(1, Math.round((percentage || 0) * totalLocs));
               updateLocation(currentLoc.start.cfi, currentPage, totalLocs || 1, progress);
             } catch {
               // Ignore errors
