@@ -22,21 +22,20 @@ export function LibraryHeader({
   onSortOrderChange,
 }: LibraryHeaderProps) {
   const sortOptions = [
-    { value: 'lastOpened', label: 'Recently Read' },
-    { value: 'dateAdded', label: 'Date Added' },
+    { value: 'lastOpened', label: 'Recent' },
+    { value: 'dateAdded', label: 'Added' },
     { value: 'title', label: 'Title' },
     { value: 'author', label: 'Author' },
-    { value: 'progress', label: 'Progress' },
   ];
 
   return (
-    <header className="flex items-center gap-4 px-6 py-4 border-b border-[var(--border)] bg-[var(--bg-primary)]">
+    <header className="flex items-center gap-4 px-6 py-3 border-b border-[var(--border)]/50 bg-[var(--bg-primary)]">
       {/* Search */}
       <SearchInput
         value={searchQuery}
         onChange={onSearchChange}
-        placeholder="Search books..."
-        className="w-64"
+        placeholder="Search..."
+        className="w-48"
       />
 
       <div className="flex-1" />
@@ -46,52 +45,43 @@ export function LibraryHeader({
         options={sortOptions}
         value={sortBy}
         onChange={onSortChange}
-        className="w-40"
+        className="w-32"
       />
 
       {/* Sort order */}
       <button
         onClick={() => onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')}
-        className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+        className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-200"
         title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
       >
-        <svg
-          className={`w-5 h-5 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
-        </svg>
+        <span className={`inline-block transition-transform duration-200 ${sortOrder === 'desc' ? 'rotate-180' : ''}`}>
+          ↑
+        </span>
       </button>
 
       {/* View mode toggle */}
-      <div className="flex items-center bg-[var(--bg-tertiary)] rounded-lg p-1">
+      <div className="flex items-center border border-[var(--border)]/50">
         <button
           onClick={() => onViewModeChange('grid')}
-          className={`p-1.5 rounded-md transition-colors ${
+          className={`px-3 py-1.5 text-sm font-serif transition-colors duration-200 ${
             viewMode === 'grid'
-              ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm'
-              : 'text-[var(--text-secondary)]'
+              ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
           }`}
           title="Grid view"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-          </svg>
+          Grid
         </button>
         <button
           onClick={() => onViewModeChange('list')}
-          className={`p-1.5 rounded-md transition-colors ${
+          className={`px-3 py-1.5 text-sm font-serif transition-colors duration-200 border-l border-[var(--border)]/50 ${
             viewMode === 'list'
-              ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm'
-              : 'text-[var(--text-secondary)]'
+              ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
           }`}
           title="List view"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-          </svg>
+          List
         </button>
       </div>
     </header>

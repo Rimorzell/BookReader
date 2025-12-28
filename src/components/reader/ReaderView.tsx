@@ -7,8 +7,9 @@ import { TableOfContents } from './TableOfContents';
 import { ReaderSettings } from './ReaderSettings';
 import { BookmarksPanel } from './BookmarksPanel';
 import { useReaderStore, useLibraryStore, useSettingsStore } from '../../stores';
-import { UI_CONSTANTS } from '../../constants';
 import type { TocItem } from '../../types';
+
+const UI_HIDE_DELAY = 2000; // 2 seconds
 
 export function ReaderView() {
   const { bookId } = useParams<{ bookId: string }>();
@@ -33,62 +34,51 @@ export function ReaderView() {
 
   const [toc, setToc] = useState<TocItem[]>([]);
   const rendererRef = useRef<EpubRendererRef | null>(null);
-  const recommendedSettings = {
-    theme: 'sepia' as const,
-    fontFamily: 'Georgia',
-    fontSize: 18,
-    lineHeight: 1.8,
-    letterSpacing: 0,
-    textAlign: 'justify' as const,
-    marginHorizontal: 72,
-    marginVertical: 48,
-    maxWidth: 780,
-    paragraphSpacing: 1.25,
-    pageAnimation: 'slide' as const,
-    viewMode: 'paginated' as const,
-    showProgress: true,
-    twoPageSpread: false,
-  };
 
   const book = books.find((b) => b.id === bookId);
 
   // Auto-hide UI after inactivity
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const resetHideTimeout = useCallback(() => {
+  const clearHideTimeout = useCallback(() => {
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
     }
+  }, []);
+
+  const startHideTimeout = useCallback(() => {
+    clearHideTimeout();
     if (isUIVisible && !isTocOpen && !isSettingsOpen && !isBookmarksOpen) {
       hideTimeoutRef.current = setTimeout(() => {
         hideUI();
-      }, UI_CONSTANTS.UI_HIDE_TIMEOUT_MS);
+      }, UI_HIDE_DELAY);
     }
-  }, [isUIVisible, isTocOpen, isSettingsOpen, isBookmarksOpen, hideUI]);
+  }, [isUIVisible, isTocOpen, isSettingsOpen, isBookmarksOpen, hideUI, clearHideTimeout]);
 
   useEffect(() => {
-    resetHideTimeout();
-    return () => {
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current);
-      }
-    };
-  }, [resetHideTimeout]);
+    startHideTimeout();
+    return clearHideTimeout;
+  }, [startHideTimeout, clearHideTimeout]);
 
   // Handle mouse movement to show UI
   const handleMouseMove = useCallback(() => {
     if (!isUIVisible) {
       showUI();
     }
-    resetHideTimeout();
-  }, [isUIVisible, showUI, resetHideTimeout]);
+    startHideTimeout();
+  }, [isUIVisible, showUI, startHideTimeout]);
 
   const handleUIHover = useCallback(() => {
+    clearHideTimeout();
     showUI();
-    resetHideTimeout();
-  }, [showUI, resetHideTimeout]);
+  }, [showUI, clearHideTimeout]);
 
-  // Handle click on reading area to toggle UI
+  const handleUILeave = useCallback(() => {
+    startHideTimeout();
+  }, [startHideTimeout]);
+
+  // Handle click on reading area to hide UI
   const handleReaderClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     // Only toggle if clicking on the reader area, not controls
@@ -154,8 +144,7 @@ export function ReaderView() {
     return (
       <div className="flex items-center justify-center h-full bg-[var(--bg-primary)]">
         <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-[var(--text-secondary)]">Loading...</p>
+          <p className="text-[var(--text-muted)] font-serif italic">Loading...</p>
         </div>
       </div>
     );
@@ -164,15 +153,12 @@ export function ReaderView() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-full bg-[var(--bg-primary)]">
-        <div className="text-center">
-          <svg className="w-16 h-16 mx-auto mb-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <h2 className="text-lg font-medium text-[var(--text-primary)] mb-2">Failed to load book</h2>
-          <p className="text-[var(--text-secondary)] mb-4">{error}</p>
+        <div className="text-center max-w-md">
+          <h2 className="text-lg font-serif text-[var(--text-primary)] mb-2">Unable to open book</h2>
+          <p className="text-sm text-[var(--text-muted)] mb-4">{error}</p>
           <button
             onClick={() => navigate('/')}
-            className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg"
+            className="px-4 py-2 border border-[var(--border)] text-[var(--text-primary)] font-serif hover:bg-[var(--bg-tertiary)] transition-colors duration-200"
           >
             Return to Library
           </button>
@@ -186,22 +172,15 @@ export function ReaderView() {
   };
 
   const handleNavigate = (href: string) => {
-    // Navigation will be handled by the EpubRenderer
     rendererRef.current?.goToLocation(href);
   };
 
   const handlePrevPage = () => {
     rendererRef.current?.goPrev();
-    resetHideTimeout();
   };
 
   const handleNextPage = () => {
     rendererRef.current?.goNext();
-    resetHideTimeout();
-  };
-
-  const handleScrubProgress = (percentage: number) => {
-    rendererRef.current?.goToPercentage(percentage);
   };
 
   return (
@@ -214,28 +193,28 @@ export function ReaderView() {
       <ReaderTopBar
         book={book}
         visible={isUIVisible}
-        recommendedSettings={recommendedSettings}
-        onApplyRecommended={() => updateReaderSettings(recommendedSettings)}
         onHover={handleUIHover}
       />
 
       {/* Reader content with navigation arrows */}
       <div className="h-full relative" data-reader-content>
-        {/* Left navigation arrow - absolutely positioned */}
+        {/* Left navigation arrow */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             handlePrevPage();
           }}
-          className="absolute left-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
+          className={`absolute left-0 top-0 bottom-0 w-16 flex items-center justify-center transition-all duration-300 z-10 ${
+            isUIVisible
+              ? 'opacity-30 hover:opacity-70 text-[var(--text-muted)]'
+              : 'opacity-0'
+          }`}
           aria-label="Previous page"
         >
-          <svg className="w-8 h-8 opacity-30 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
+          <span className="text-2xl font-light">‹</span>
         </button>
 
-        {/* Book content - centered horizontally, starts from top */}
+        {/* Book content */}
         <div className="h-full flex justify-center px-16 py-4">
           <div className="h-full w-full max-w-3xl">
             {book.fileType === 'epub' && (
@@ -244,23 +223,62 @@ export function ReaderView() {
           </div>
         </div>
 
-        {/* Right navigation arrow - absolutely positioned */}
+        {/* Right navigation arrow */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             handleNextPage();
           }}
-          className="absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
+          className={`absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center transition-all duration-300 z-10 ${
+            isUIVisible
+              ? 'opacity-30 hover:opacity-70 text-[var(--text-muted)]'
+              : 'opacity-0'
+          }`}
           aria-label="Next page"
         >
-          <svg className="w-8 h-8 opacity-30 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
+          <span className="text-2xl font-light">›</span>
         </button>
       </div>
 
       {/* Bottom bar */}
-      <ReaderBottomBar visible={isUIVisible} onHover={handleUIHover} />
+      <ReaderBottomBar
+        visible={isUIVisible}
+        onHover={handleUIHover}
+      />
+
+      {/* Quick access buttons - only show on hover */}
+      <div
+        className={`absolute top-4 right-4 z-50 flex items-center gap-2 transition-all duration-300 ${
+          isUIVisible && !isTocOpen && !isSettingsOpen && !isBookmarksOpen
+            ? 'opacity-100'
+            : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+        onMouseEnter={handleUIHover}
+        onMouseLeave={handleUILeave}
+      >
+        <button
+          onClick={() => setTocOpen(true)}
+          className="px-3 py-1.5 text-xs font-serif text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-200"
+          title="Contents (T)"
+        >
+          Contents
+        </button>
+        <button
+          onClick={() => setBookmarksOpen(true)}
+          className="px-3 py-1.5 text-xs font-serif text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-200"
+          title="Bookmarks (B)"
+        >
+          Bookmarks
+        </button>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="px-3 py-1.5 text-xs font-serif text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-200"
+          title="Settings (S)"
+        >
+          Settings
+        </button>
+      </div>
 
       {/* Table of Contents */}
       <TableOfContents
@@ -284,53 +302,10 @@ export function ReaderView() {
         onNavigate={handleNavigate}
       />
 
-      {/* Floating quick access buttons - positioned in top right, visible with UI */}
-      {isUIVisible && !isTocOpen && !isSettingsOpen && !isBookmarksOpen && (
-        <div
-          className="absolute top-3 right-4 z-50 flex items-center gap-1 transition-all duration-300"
-          onClick={(e) => e.stopPropagation()}
-          onMouseMove={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={() => setTocOpen(true)}
-            className="p-2 rounded-lg bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
-            aria-label="Contents (T)"
-            title="Table of Contents (T)"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setBookmarksOpen(true)}
-            className="p-2 rounded-lg bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
-            aria-label="Bookmarks (B)"
-            title="Bookmarks (B)"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="p-2 rounded-lg bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-all"
-            aria-label="Settings (S)"
-            title="Settings (S)"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-            </svg>
-          </button>
-        </div>
-      )}
-
       {/* Loading overlay */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-primary)]/80 z-50">
-          <div className="text-center">
-            <div className="animate-spin w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-[var(--text-secondary)]">Loading book...</p>
-          </div>
+        <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-primary)]/90 z-50">
+          <p className="text-[var(--text-muted)] font-serif italic">Opening book...</p>
         </div>
       )}
     </div>
