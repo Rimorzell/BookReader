@@ -39,29 +39,51 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   bookIdRef.current = book.id;
 
   const applyStyles = useCallback((rendition: Rendition) => {
-    // Get theme colors
-    const themeColors = getThemeColors(readerSettings.theme);
+    try {
+      // Get theme colors
+      const themeColors = getThemeColors(readerSettings.theme);
 
-    rendition.themes.default({
-      body: {
-        'font-family': `${readerSettings.fontFamily} !important`,
-        'font-size': `${readerSettings.fontSize}px !important`,
-        'line-height': `${readerSettings.lineHeight} !important`,
-        'letter-spacing': `${readerSettings.letterSpacing}px !important`,
-        color: `${themeColors.text} !important`,
-        'background-color': `${themeColors.background} !important`,
-        padding: `${readerSettings.marginVertical}px ${readerSettings.marginHorizontal}px !important`,
-        'max-width': `${readerSettings.maxWidth}px`,
-        margin: '0 auto',
-      },
-      p: {
-        'text-align': `${readerSettings.textAlign} !important`,
-        'margin-bottom': `${readerSettings.paragraphSpacing}em !important`,
-      },
-      a: {
-        color: `${themeColors.link} !important`,
-      },
-    });
+      rendition.themes.default({
+        body: {
+          'font-family': `${readerSettings.fontFamily} !important`,
+          'font-size': `${readerSettings.fontSize}px !important`,
+          'line-height': `${readerSettings.lineHeight} !important`,
+          'letter-spacing': `${readerSettings.letterSpacing}px !important`,
+          color: `${themeColors.text} !important`,
+          'background-color': `${themeColors.background} !important`,
+          padding: `${readerSettings.marginVertical}px ${readerSettings.marginHorizontal}px !important`,
+          'max-width': `${readerSettings.maxWidth}px`,
+          margin: '0 auto',
+        },
+        p: {
+          'text-align': `${readerSettings.textAlign} !important`,
+          'margin-bottom': `${readerSettings.paragraphSpacing}em !important`,
+        },
+        a: {
+          color: `${themeColors.link} !important`,
+        },
+        // Ensure images don't overflow or get split across pages
+        img: {
+          'max-width': '100% !important',
+          'max-height': '90vh !important',
+          'object-fit': 'contain !important',
+          'page-break-inside': 'avoid !important',
+          'break-inside': 'avoid !important',
+        },
+        svg: {
+          'max-width': '100% !important',
+          'max-height': '90vh !important',
+        },
+        // Prevent page breaks inside figures
+        figure: {
+          'page-break-inside': 'avoid !important',
+          'break-inside': 'avoid !important',
+        },
+      });
+    } catch (err) {
+      // Ignore insertRule errors - can happen when iframe isn't fully ready
+      console.debug('Could not apply styles:', err);
+    }
   }, [readerSettings]);
 
   const goNext = useCallback(() => {
