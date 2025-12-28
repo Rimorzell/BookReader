@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Book } from '../../types';
 import { formatDate } from '../../utils';
 
@@ -9,7 +9,28 @@ interface BookCardProps {
   onContextMenu?: (e: React.MouseEvent) => void;
 }
 
+function CoverPlaceholder({ title, author, small = false }: { title: string; author: string; small?: boolean }) {
+  if (small) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-[var(--bg-tertiary)]">
+        <span className="text-[var(--text-muted)] text-xs font-serif">Book</span>
+      </div>
+    );
+  }
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-[var(--bg-tertiary)]">
+      <div className="text-center">
+        <p className="font-serif text-[var(--text-primary)] text-sm line-clamp-3">{title}</p>
+        <p className="text-xs text-[var(--text-secondary)] mt-2 italic">{author}</p>
+      </div>
+    </div>
+  );
+}
+
 export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardProps) {
+  const [imageError, setImageError] = useState(false);
+  const showCover = book.coverPath && !imageError;
+
   if (viewMode === 'list') {
     return (
       <div
@@ -19,16 +40,15 @@ export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardPro
       >
         {/* Cover thumbnail */}
         <div className="w-10 h-14 flex-shrink-0 overflow-hidden bg-[var(--bg-tertiary)]">
-          {book.coverPath ? (
+          {showCover ? (
             <img
               src={book.coverPath}
               alt={book.title}
               className="w-full h-full object-cover"
+              onError={() => setImageError(true)}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-[var(--bg-tertiary)]">
-              <span className="text-[var(--text-muted)] text-xs font-serif">Book</span>
-            </div>
+            <CoverPlaceholder title={book.title} author={book.author} small />
           )}
         </div>
 
@@ -55,19 +75,15 @@ export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardPro
     >
       {/* Book cover */}
       <div className="relative aspect-[2/3] overflow-hidden bg-[var(--bg-tertiary)] shadow-md transition-all duration-300 ease-out group-hover:shadow-lg group-hover:-translate-y-1">
-        {book.coverPath ? (
+        {showCover ? (
           <img
             src={book.coverPath}
             alt={book.title}
             className="w-full h-full object-cover"
+            onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-[var(--bg-tertiary)]">
-            <div className="text-center">
-              <p className="font-serif text-[var(--text-primary)] text-sm line-clamp-3">{book.title}</p>
-              <p className="text-xs text-[var(--text-secondary)] mt-2 italic">{book.author}</p>
-            </div>
-          </div>
+          <CoverPlaceholder title={book.title} author={book.author} />
         )}
       </div>
 
