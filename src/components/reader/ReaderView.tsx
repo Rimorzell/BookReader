@@ -183,10 +183,12 @@ export function ReaderView() {
 
   const handlePrevPage = () => {
     rendererRef.current?.goPrev();
+    resetHideTimeout();
   };
 
   const handleNextPage = () => {
     rendererRef.current?.goNext();
+    resetHideTimeout();
   };
 
   const handleScrubProgress = (percentage: number) => {
@@ -209,7 +211,10 @@ export function ReaderView() {
       <div className="h-full relative" data-reader-content>
         {/* Left navigation arrow - absolutely positioned */}
         <button
-          onClick={handlePrevPage}
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePrevPage();
+          }}
           className="absolute left-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
           aria-label="Previous page"
         >
@@ -229,7 +234,10 @@ export function ReaderView() {
 
         {/* Right navigation arrow - absolutely positioned */}
         <button
-          onClick={handleNextPage}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNextPage();
+          }}
           className="absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
           aria-label="Next page"
         >
