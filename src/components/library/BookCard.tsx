@@ -1,7 +1,6 @@
 import React from 'react';
 import type { Book } from '../../types';
-import { ProgressBar } from '../common';
-import { formatReadingTime, formatDate } from '../../utils';
+import { formatReadingTime } from '../../utils';
 
 interface BookCardProps {
   book: Book;
@@ -16,10 +15,10 @@ export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardPro
       <div
         onClick={onClick}
         onContextMenu={onContextMenu}
-        className="flex items-center gap-4 p-3 bg-[var(--bg-secondary)] rounded-xl cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors group"
+        className="flex items-center gap-4 p-3 bg-[var(--bg-primary)]/90 border border-[var(--border)]/70 rounded-xl cursor-pointer hover:-translate-y-[2px] hover:shadow-lg hover:shadow-[var(--shadow)]/40 transition-all duration-200 group"
       >
         {/* Cover thumbnail */}
-        <div className="w-12 h-16 flex-shrink-0 rounded-md overflow-hidden bg-[var(--bg-tertiary)] shadow">
+        <div className="w-12 h-16 flex-shrink-0 rounded-md overflow-hidden bg-[var(--bg-tertiary)] shadow-inner ring-1 ring-[var(--border)]/60">
           {book.coverPath ? (
             <img
               src={book.coverPath}
@@ -38,19 +37,14 @@ export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardPro
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-[var(--text-primary)] truncate">{book.title}</h3>
-          <p className="text-sm text-[var(--text-secondary)] truncate">{book.author}</p>
-          <div className="flex items-center gap-4 mt-1">
-            <ProgressBar value={book.progress} size="sm" className="flex-1 max-w-[120px]" />
-            <span className="text-xs text-[var(--text-muted)]">{Math.round(book.progress)}%</span>
-          </div>
+          <h3 className="font-semibold text-[var(--text-primary)] truncate">{book.title}</h3>
+          <p className="text-sm text-[var(--text-secondary)] truncate italic">{book.author}</p>
+          {book.readingTime > 0 && (
+            <div className="mt-2 text-xs text-[var(--text-muted)]">{formatReadingTime(book.readingTime)}</div>
+          )}
         </div>
 
-        {/* Meta */}
-        <div className="text-right text-xs text-[var(--text-muted)]">
-          {book.lastOpened && <div>{formatDate(book.lastOpened)}</div>}
-          {book.readingTime > 0 && <div>{formatReadingTime(book.readingTime)}</div>}
-        </div>
+        <div className="text-right text-xs text-[var(--text-muted)]" />
       </div>
     );
   }
@@ -63,7 +57,7 @@ export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardPro
       className="group cursor-pointer"
     >
       {/* Book cover */}
-      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-[var(--bg-tertiary)] shadow-lg book-card">
+      <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-[var(--bg-primary)]/90 border border-[var(--border)]/70 shadow-md book-card transition-transform duration-200 group-hover:-translate-y-[3px] group-hover:shadow-lg">
         {book.coverPath ? (
           <img
             src={book.coverPath}
@@ -82,25 +76,14 @@ export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardPro
           </div>
         )}
 
-        {/* Progress overlay */}
-        {book.progress > 0 && book.progress < 100 && (
-          <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
-            <ProgressBar value={book.progress} size="sm" />
-          </div>
-        )}
-
-        {/* Finished badge */}
-        {book.status === 'finished' && (
-          <div className="absolute top-2 right-2 px-2 py-0.5 bg-green-500 text-white text-xs font-medium rounded-full">
-            Finished
-          </div>
-        )}
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
 
       {/* Book info */}
-      <div className="mt-3 px-1">
-        <h3 className="font-medium text-[var(--text-primary)] line-clamp-1">{book.title}</h3>
-        <p className="text-sm text-[var(--text-secondary)] line-clamp-1">{book.author}</p>
+      <div className="mt-3 px-1 space-y-1">
+        <h3 className="font-semibold text-[var(--text-primary)] line-clamp-1">{book.title}</h3>
+        <p className="text-sm text-[var(--text-secondary)] line-clamp-1 italic">{book.author}</p>
+        {book.readingTime > 0 && <div className="text-[11px] text-[var(--text-muted)]">{formatReadingTime(book.readingTime)}</div>}
       </div>
     </div>
   );
