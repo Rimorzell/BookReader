@@ -24,6 +24,21 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
+  componentDidMount() {
+    window.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && this.state.hasError) {
+      e.preventDefault();
+      this.handleRetry();
+    }
+  };
+
   handleRetry = () => {
     this.setState({ hasError: false, error: null });
   };

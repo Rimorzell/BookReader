@@ -11,12 +11,14 @@ interface ReaderTopBarProps {
     lineHeight: number;
   };
   onApplyRecommended: () => void;
+  onHover?: () => void;
 }
 export function ReaderTopBar({
   book,
   visible,
   recommendedSettings,
   onApplyRecommended,
+  onHover,
 }: ReaderTopBarProps) {
   const navigate = useNavigate();
   const { currentChapter } = useReaderStore();

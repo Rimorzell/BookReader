@@ -216,6 +216,7 @@ export function ReaderView() {
         visible={isUIVisible}
         recommendedSettings={recommendedSettings}
         onApplyRecommended={() => updateReaderSettings(recommendedSettings)}
+        onHover={handleUIHover}
       />
 
       {/* Reader content with navigation arrows */}
