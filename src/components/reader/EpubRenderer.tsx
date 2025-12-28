@@ -113,7 +113,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
       const cfi = location.start.cfi;
 
-      // Calculate progress based on locations if available
+      // Calculate progress based on generated locations when available
       let progress = 0;
       let totalLocs = 0;
       let currentPage = location.start.displayed?.page || 1;
