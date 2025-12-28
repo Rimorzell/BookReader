@@ -16,7 +16,7 @@ export function ReaderTopBar({
   };
   return (
     <header
-      className={`absolute top-0 left-0 right-0 z-40 flex items-center px-4 py-3 bg-[var(--bg-primary)]/95 backdrop-blur-sm border-b border-[var(--border)] transition-all duration-300 ${
+      className={`absolute top-0 left-0 right-0 z-40 flex items-center px-4 py-3 bg-[var(--bg-primary)]/80 backdrop-blur-lg border-b border-[var(--border)]/60 shadow-sm transition-all duration-300 ${
         visible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
       }`}
     >
@@ -24,7 +24,7 @@ export function ReaderTopBar({
       <div className="flex items-center gap-4">
         <button
           onClick={handleClose}
-          className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+          className="p-2 rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
           aria-label="Close reader"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -32,11 +32,11 @@ export function ReaderTopBar({
           </svg>
         </button>
         <div className="min-w-0">
-          <h1 className="text-sm font-medium text-[var(--text-primary)] truncate max-w-[400px]">
+          <h1 className="text-sm font-semibold text-[var(--text-primary)] truncate max-w-[400px] tracking-tight">
             {book.title}
           </h1>
           {currentChapter && (
-            <p className="text-xs text-[var(--text-secondary)] truncate max-w-[400px]">
+            <p className="text-[11px] text-[var(--text-secondary)] truncate max-w-[400px]">
               {currentChapter}
             </p>
           )}

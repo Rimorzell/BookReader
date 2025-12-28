@@ -9,12 +9,17 @@ export function ReaderBottomBar({
   visible,
   onScrubProgress,
 }: ReaderBottomBarProps) {
-  const { progress, totalLocations } = useReaderStore();
+  const {
+    progress,
+    totalLocations,
+    currentPage: storedCurrentPage,
+    totalPages: storedTotalPages,
+  } = useReaderStore();
   const { settings } = useSettingsStore();
 
-  // Calculate current page out of total book pages
-  const currentPage = Math.max(1, Math.round((progress / 100) * totalLocations));
-  const totalPages = totalLocations > 0 ? totalLocations : 1;
+  const totalPages = totalLocations || storedTotalPages || 1;
+  const currentPage = Math.min(totalPages, Math.max(1, storedCurrentPage || 1));
+  const roundedProgress = Math.min(100, Math.max(0, Math.round(progress || (currentPage / totalPages) * 100)));
 
   const handleProgressScrub = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -33,39 +38,51 @@ export function ReaderBottomBar({
   };
   return (
     <footer
-      className={`absolute bottom-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 bg-[var(--bg-primary)]/95 backdrop-blur-sm border-t border-[var(--border)] transition-all duration-300 ${
+      className={`absolute bottom-0 left-0 right-0 z-40 px-5 pb-4 pt-3 bg-[var(--bg-primary)]/85 backdrop-blur-lg border-t border-[var(--border)]/60 transition-all duration-300 ${
         visible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
       }`}
     >
-      <div className="flex-1 flex flex-col items-center gap-2 px-4">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-2">
+        <div className="flex items-center justify-between text-[var(--text-secondary)] text-[10px] uppercase tracking-[0.12em]">
+          <span className="flex items-center gap-2">
+            <span className="h-px w-6 bg-[var(--border)]/70" />
+            Reading progress
+          </span>
+          <span className="text-[var(--text-primary)] text-xs font-semibold">{roundedProgress}% read</span>
+        </div>
         {/* Progress bar */}
-        <div className="w-full max-w-xl">
+        <div>
           <div
-            className="h-2 bg-[var(--bg-tertiary)] rounded-full overflow-hidden cursor-pointer relative group"
+            className="group relative h-2 w-full cursor-pointer overflow-hidden rounded-full bg-[var(--bg-tertiary)]/80"
             role="slider"
             tabIndex={0}
             aria-label="Reading progress"
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={Math.round(progress)}
+            aria-valuenow={roundedProgress}
             aria-valuetext={`Page ${currentPage} of ${totalPages}`}
             onClick={handleProgressScrub}
             onKeyDown={handleProgressKeyDown}
           >
             <div
-              className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] transition-all duration-300"
-              style={{ width: `${progress}%` }}
+              className="absolute inset-0 bg-gradient-to-r from-[var(--accent)] via-[var(--accent-hover)]/80 to-[var(--accent-hover)]"
+              style={{ width: `${roundedProgress}%` }}
             />
             <div
-              className="absolute top-1/2 -translate-y-1/2 bg-[var(--bg-primary)] border border-[var(--border)] rounded-full w-4 h-4 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ left: `calc(${progress}% - 8px)` }}
+              className="absolute inset-0 bg-[var(--bg-primary)]/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+              style={{ left: `${roundedProgress}%` }}
+            />
+            <div
+              className="absolute top-1/2 h-4 w-4 -translate-y-1/2 translate-x-[-50%] rounded-full border border-[var(--border)] bg-[var(--bg-primary)] shadow-sm opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+              style={{ left: `${roundedProgress}%` }}
             />
           </div>
         </div>
         {/* Page info */}
         {settings.reader.showProgress && (
-          <div className="text-xs text-[var(--text-secondary)]">
-            <span>Page {currentPage} of {totalPages}</span>
+          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+            <span className="font-medium text-[var(--text-primary)]">Page {currentPage} / {totalPages}</span>
+            <span className="text-[var(--text-secondary)]">Tap or drag to jump</span>
           </div>
         )}
       </div>
