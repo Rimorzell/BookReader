@@ -27,6 +27,7 @@ declare module 'epubjs' {
       length: () => number;
       percentageFromCfi: (cfi: string) => number;
       cfiFromPercentage: (percentage: number) => string;
+      locationFromCfi?: (cfi: string) => number;
     };
     coverUrl: () => Promise<string | null>;
     destroy: () => void;

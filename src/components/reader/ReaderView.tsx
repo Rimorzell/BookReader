@@ -6,7 +6,7 @@ import { ReaderBottomBar } from './ReaderBottomBar';
 import { TableOfContents } from './TableOfContents';
 import { ReaderSettings } from './ReaderSettings';
 import { BookmarksPanel } from './BookmarksPanel';
-import { useReaderStore, useLibraryStore, useSettingsStore } from '../../stores';
+import { useReaderStore, useLibraryStore } from '../../stores';
 import type { TocItem } from '../../types';
 
 const UI_HIDE_DELAY = 2000; // 2 seconds
@@ -30,7 +30,6 @@ export function ReaderView() {
     endSession,
     reset,
   } = useReaderStore();
-  const { updateReaderSettings } = useSettingsStore();
 
   const [toc, setToc] = useState<TocItem[]>([]);
   const rendererRef = useRef<EpubRendererRef | null>(null);

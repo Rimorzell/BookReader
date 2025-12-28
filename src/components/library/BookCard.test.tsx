@@ -5,7 +5,7 @@ import type { Book } from '../../types';
 
 // Mock formatDate to return predictable values
 vi.mock('../../utils', () => ({
-  formatDate: vi.fn((timestamp: number) => 'Jan 15'),
+  formatDate: vi.fn(() => 'Jan 15'),
 }));
 
 describe('BookCard', () => {

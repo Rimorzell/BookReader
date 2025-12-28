@@ -74,7 +74,7 @@ describe('ErrorBoundary', () => {
       return <div>Normal content</div>;
     };
 
-    const { rerender } = render(
+    render(
       <ErrorBoundary>
         <ConditionalThrow />
       </ErrorBoundary>

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useLibraryStore } from './libraryStore';
-import { act } from '@testing-library/react';
 
 // Helper to reset store between tests
 const resetStore = () => {
@@ -87,7 +86,7 @@ describe('libraryStore', () => {
       });
 
       it('should do nothing if book does not exist', () => {
-        const { addBook, updateBook, books: initialBooks } = useLibraryStore.getState();
+        const { addBook, updateBook } = useLibraryStore.getState();
 
         addBook({ title: 'Book', author: 'Author', filePath: '/book.epub', fileType: 'epub' });
 
@@ -111,7 +110,7 @@ describe('libraryStore', () => {
       });
 
       it('should remove associated bookmarks when removing a book', () => {
-        const { addBook, addBookmark, removeBook, bookmarks } = useLibraryStore.getState();
+        const { addBook, addBookmark, removeBook } = useLibraryStore.getState();
 
         const book = addBook({ title: 'Book', author: 'Author', filePath: '/book.epub', fileType: 'epub' });
         addBookmark(book.id, 'location1', 'text1');
