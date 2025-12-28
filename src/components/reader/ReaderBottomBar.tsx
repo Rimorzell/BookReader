@@ -1,73 +1,39 @@
 import { useReaderStore, useSettingsStore } from '../../stores';
-import { UI_CONSTANTS } from '../../constants';
 
 interface ReaderBottomBarProps {
   visible: boolean;
-  onScrubProgress: (percentage: number) => void;
+  onHover: () => void;
 }
 export function ReaderBottomBar({
   visible,
-  onScrubProgress,
+  onHover,
 }: ReaderBottomBarProps) {
-  const { progress, totalLocations } = useReaderStore();
+  const {
+    totalLocations,
+    currentPage: storedCurrentPage,
+    totalPages: storedTotalPages,
+  } = useReaderStore();
   const { settings } = useSettingsStore();
 
-  // Calculate current page out of total book pages
-  const currentPage = Math.max(1, Math.round((progress / 100) * totalLocations));
-  const totalPages = totalLocations > 0 ? totalLocations : 1;
-
-  const handleProgressScrub = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const percentage = ((e.clientX - rect.left) / rect.width) * 100;
-    onScrubProgress(Math.max(0, Math.min(100, percentage)));
-  };
-
-  const handleProgressKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      onScrubProgress(Math.max(0, progress - UI_CONSTANTS.PROGRESS_STEP));
-    } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      onScrubProgress(Math.min(100, progress + UI_CONSTANTS.PROGRESS_STEP));
-    }
-  };
+  const totalPages = totalLocations || storedTotalPages || 1;
+  const currentPage = Math.min(totalPages, Math.max(1, storedCurrentPage || 1));
+  const roundedProgress = Math.min(100, Math.max(0, Math.round((currentPage / totalPages) * 100)));
   return (
     <footer
-      className={`absolute bottom-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 bg-[var(--bg-primary)]/95 backdrop-blur-sm border-t border-[var(--border)] transition-all duration-300 ${
+      className={`absolute bottom-0 left-0 right-0 z-40 px-6 pb-4 pt-3 bg-[var(--bg-primary)]/95 backdrop-blur-md border-t border-[var(--border)]/70 shadow-inner transition-all duration-300 ${
         visible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
       }`}
+      onMouseEnter={onHover}
     >
-      <div className="flex-1 flex flex-col items-center gap-2 px-4">
-        {/* Progress bar */}
-        <div className="w-full max-w-xl">
-          <div
-            className="h-2 bg-[var(--bg-tertiary)] rounded-full overflow-hidden cursor-pointer relative group"
-            role="slider"
-            tabIndex={0}
-            aria-label="Reading progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(progress)}
-            aria-valuetext={`Page ${currentPage} of ${totalPages}`}
-            onClick={handleProgressScrub}
-            onKeyDown={handleProgressKeyDown}
-          >
-            <div
-              className="h-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-            <div
-              className="absolute top-1/2 -translate-y-1/2 bg-[var(--bg-primary)] border border-[var(--border)] rounded-full w-4 h-4 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ left: `calc(${progress}% - 8px)` }}
-            />
-          </div>
-        </div>
-        {/* Page info */}
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between text-[var(--text-secondary)] text-sm">
         {settings.reader.showProgress && (
-          <div className="text-xs text-[var(--text-secondary)]">
-            <span>Page {currentPage} of {totalPages}</span>
+          <div className="flex items-center gap-3">
+            <span className="h-px w-10 bg-[var(--border)]/60" />
+            <span className="font-semibold text-[var(--text-primary)] tracking-wide">Page {currentPage} / {totalPages}</span>
+            <span className="h-px w-10 bg-[var(--border)]/60" />
           </div>
         )}
+        <span className="text-[12px] italic text-[var(--text-muted)]">{roundedProgress}% read</span>
       </div>
     </footer>
   );
