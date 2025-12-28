@@ -200,6 +200,10 @@ export function ReaderView() {
     resetHideTimeout();
   };
 
+  const handleScrubProgress = (percentage: number) => {
+    rendererRef.current?.goToPercentage(percentage);
+  };
+
   return (
     <div
       className="relative h-full overflow-hidden"
@@ -212,19 +216,17 @@ export function ReaderView() {
         visible={isUIVisible}
         recommendedSettings={recommendedSettings}
         onApplyRecommended={() => updateReaderSettings(recommendedSettings)}
-        onHover={handleUIHover}
       />
 
       {/* Reader content with navigation arrows */}
       <div className="h-full relative" data-reader-content>
         {/* Left navigation arrow - absolutely positioned */}
         <button
-          onMouseEnter={handleUIHover}
           onClick={(e) => {
             e.stopPropagation();
             handlePrevPage();
           }}
-          className={`absolute left-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/40 transition-all group z-10 ${isUIVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          className="absolute left-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
           aria-label="Previous page"
         >
           <svg className="w-8 h-8 opacity-30 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,12 +245,11 @@ export function ReaderView() {
 
         {/* Right navigation arrow - absolutely positioned */}
         <button
-          onMouseEnter={handleUIHover}
           onClick={(e) => {
             e.stopPropagation();
             handleNextPage();
           }}
-          className={`absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/40 transition-all group z-10 ${isUIVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          className="absolute right-0 top-0 bottom-0 w-16 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50 transition-all group z-10"
           aria-label="Next page"
         >
           <svg className="w-8 h-8 opacity-30 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
