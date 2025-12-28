@@ -38,22 +38,22 @@ export function ReaderBottomBar({
   };
   return (
     <footer
-      className={`absolute bottom-0 left-0 right-0 z-40 px-6 pb-5 pt-4 bg-gradient-to-r from-[var(--bg-secondary)]/95 via-[var(--bg-primary)]/90 to-[var(--bg-secondary)]/95 backdrop-blur-md border-t border-[var(--border)]/70 shadow-inner transition-all duration-300 ${
+      className={`absolute bottom-0 left-0 right-0 z-40 px-5 pb-4 pt-3 bg-[var(--bg-primary)]/85 backdrop-blur-lg border-t border-[var(--border)]/60 transition-all duration-300 ${
         visible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
       }`}
     >
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 text-[var(--text-secondary)]">
-        <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.12em]">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-2">
+        <div className="flex items-center justify-between text-[var(--text-secondary)] text-[10px] uppercase tracking-[0.12em]">
           <span className="flex items-center gap-2">
-            <span className="h-px w-8 bg-[var(--border)]/80" />
-            Leaf through
+            <span className="h-px w-6 bg-[var(--border)]/70" />
+            Reading progress
           </span>
           <span className="text-[var(--text-primary)] text-xs font-semibold">{roundedProgress}% read</span>
         </div>
         {/* Progress bar */}
         <div>
           <div
-            className="group relative h-2.5 w-full cursor-pointer overflow-hidden rounded-full bg-[var(--bg-tertiary)]/80 shadow-inner"
+            className="group relative h-2 w-full cursor-pointer overflow-hidden rounded-full bg-[var(--bg-tertiary)]/80"
             role="slider"
             tabIndex={0}
             aria-label="Reading progress"
@@ -65,19 +65,23 @@ export function ReaderBottomBar({
             onKeyDown={handleProgressKeyDown}
           >
             <div
-              className="absolute inset-0 bg-gradient-to-r from-amber-500/80 via-amber-600/80 to-amber-700/80 transition-all duration-300"
+              className="absolute inset-0 bg-gradient-to-r from-[var(--accent)] via-[var(--accent-hover)]/80 to-[var(--accent-hover)]"
               style={{ width: `${roundedProgress}%` }}
             />
             <div
-              className="absolute top-1/2 h-5 w-5 -translate-y-1/2 translate-x-[-50%] rounded-full border border-[var(--border)] bg-[var(--bg-primary)] shadow-md opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+              className="absolute inset-0 bg-[var(--bg-primary)]/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+              style={{ left: `${roundedProgress}%` }}
+            />
+            <div
+              className="absolute top-1/2 h-4 w-4 -translate-y-1/2 translate-x-[-50%] rounded-full border border-[var(--border)] bg-[var(--bg-primary)] shadow-sm opacity-0 transition-opacity duration-150 group-hover:opacity-100"
               style={{ left: `${roundedProgress}%` }}
             />
           </div>
         </div>
         {/* Page info */}
         {settings.reader.showProgress && (
-          <div className="flex items-center justify-between text-[13px] text-[var(--text-secondary)] italic">
-            <span className="font-semibold text-[var(--text-primary)]">Page {currentPage} / {totalPages}</span>
+          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+            <span className="font-medium text-[var(--text-primary)]">Page {currentPage} / {totalPages}</span>
             <span className="text-[var(--text-secondary)]">Tap or drag to jump</span>
           </div>
         )}

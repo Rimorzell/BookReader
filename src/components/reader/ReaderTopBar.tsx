@@ -25,7 +25,7 @@ export function ReaderTopBar({
   };
   return (
     <header
-      className={`absolute top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[var(--bg-secondary)]/95 via-[var(--bg-primary)]/90 to-[var(--bg-secondary)]/95 backdrop-blur-md border-b border-[var(--border)]/70 shadow-lg shadow-[var(--shadow)]/50 transition-all duration-300 ${
+      className={`absolute top-0 left-0 right-0 z-40 flex items-center px-4 py-3 bg-[var(--bg-primary)]/80 backdrop-blur-lg border-b border-[var(--border)]/60 shadow-sm transition-all duration-300 ${
         visible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
       }`}
     >
@@ -33,7 +33,7 @@ export function ReaderTopBar({
       <div className="flex items-center gap-4">
         <button
           onClick={handleClose}
-          className="p-2 rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors border border-[var(--border)]/70 shadow-sm hover:shadow"
+          className="p-2 rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
           aria-label="Close reader"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
