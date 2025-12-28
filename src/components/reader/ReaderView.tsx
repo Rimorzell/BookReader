@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, type MouseEvent } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { EpubRenderer, type EpubRendererRef } from './EpubRenderer';
 import { ReaderTopBar } from './ReaderTopBar';
@@ -78,14 +78,6 @@ export function ReaderView() {
     startHideTimeout();
   }, [startHideTimeout]);
 
-  // Handle click on reading area to hide UI
-  const handleReaderClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    // Only toggle if clicking on the reader area, not controls
-    if (target.closest('[data-reader-content]')) {
-      hideUI();
-    }
-  }, [hideUI]);
 
   // Keyboard shortcuts for quick access
   useEffect(() => {
@@ -187,7 +179,6 @@ export function ReaderView() {
     <div
       className="relative h-full overflow-hidden"
       onMouseMove={handleMouseMove}
-      onClick={handleReaderClick}
     >
       {/* Top bar */}
       <ReaderTopBar
@@ -248,12 +239,11 @@ export function ReaderView() {
 
       {/* Quick access buttons - only show on hover */}
       <div
-        className={`absolute top-4 right-4 z-50 flex items-center gap-2 transition-all duration-300 ${
+        className={`absolute top-4 right-20 z-50 flex items-center gap-2 transition-all duration-300 ${
           isUIVisible && !isTocOpen && !isSettingsOpen && !isBookmarksOpen
             ? 'opacity-100'
             : 'opacity-0 pointer-events-none'
         }`}
-        onClick={(e) => e.stopPropagation()}
         onMouseEnter={handleUIHover}
         onMouseLeave={handleUILeave}
       >

@@ -36,12 +36,12 @@ export function ReaderTopBar({
         >
           ← Back
         </button>
-        <div className="min-w-0">
-          <h1 className="text-sm font-serif text-[var(--text-primary)] truncate max-w-[300px]">
+        <div className="min-w-0 flex-1 mr-4">
+          <h1 className="text-sm font-serif text-[var(--text-primary)]">
             {book.title}
           </h1>
           {currentChapter && (
-            <p className="text-xs text-[var(--text-muted)] truncate max-w-[300px] italic">
+            <p className="text-xs text-[var(--text-muted)] italic">
               {currentChapter}
             </p>
           )}

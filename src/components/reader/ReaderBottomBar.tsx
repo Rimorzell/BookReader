@@ -9,14 +9,9 @@ export function ReaderBottomBar({
   visible,
   onHover,
 }: ReaderBottomBarProps) {
-  const {
-    totalLocations,
-    currentPage: storedCurrentPage,
-    totalPages: storedTotalPages,
-  } = useReaderStore();
+  const { progress } = useReaderStore();
 
-  const totalPages = totalLocations || storedTotalPages || 1;
-  const currentPage = Math.min(totalPages, Math.max(1, storedCurrentPage || 1));
+  const displayProgress = Math.min(100, Math.max(0, Math.round(progress || 0)));
 
   return (
     <footer
@@ -26,7 +21,7 @@ export function ReaderBottomBar({
       onMouseEnter={onHover}
     >
       <span className="text-sm text-[var(--text-muted)] font-serif italic tracking-wide">
-        {currentPage} / {totalPages}
+        {displayProgress}%
       </span>
     </footer>
   );
