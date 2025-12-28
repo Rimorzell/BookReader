@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useReaderStore } from './readerStore';
 
 // Helper to reset store between tests
@@ -300,7 +300,6 @@ describe('readerStore', () => {
         updateLocation,
         setTotalLocations,
         setCurrentChapter,
-        showUI,
         setTocOpen,
         setSearchQuery,
         startSession,
@@ -357,7 +356,7 @@ describe('readerStore', () => {
 
   describe('Edge Cases', () => {
     it('should handle rapid state changes', () => {
-      const { showUI, hideUI, toggleUI } = useReaderStore.getState();
+      const { toggleUI } = useReaderStore.getState();
 
       for (let i = 0; i < 100; i++) {
         toggleUI();
