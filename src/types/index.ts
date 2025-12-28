@@ -33,19 +33,6 @@ export interface Bookmark {
   displayText?: string; // Preview of the bookmarked content
 }
 
-export interface Highlight {
-  id: string;
-  bookId: string;
-  text: string;
-  startLocation: string;
-  endLocation: string;
-  color: HighlightColor;
-  note?: string;
-  dateCreated: number;
-}
-
-export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'purple';
-
 export interface Collection {
   id: string;
   name: string;
@@ -138,14 +125,6 @@ export const fontFamilies = [
   { name: 'Open Sans', value: '"Open Sans", sans-serif', category: 'sans-serif' },
   { name: 'Roboto', value: 'Roboto, sans-serif', category: 'sans-serif' },
   { name: 'SF Mono', value: '"SF Mono", Menlo, Monaco, monospace', category: 'monospace' },
-];
-
-export const highlightColors: { name: HighlightColor; hex: string }[] = [
-  { name: 'yellow', hex: '#fef08a' },
-  { name: 'green', hex: '#bbf7d0' },
-  { name: 'blue', hex: '#bfdbfe' },
-  { name: 'pink', hex: '#fbcfe8' },
-  { name: 'purple', hex: '#ddd6fe' },
 ];
 
 export interface TocItem {

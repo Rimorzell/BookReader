@@ -74,16 +74,15 @@ export function sanitizeFilename(filename: string): string {
   return filename.replace(/[<>:"/\\|?*]/g, '-');
 }
 
-export function generateExportFilename(bookTitle: string, type: 'annotations' | 'highlights' | 'notes'): string {
+export function generateExportFilename(bookTitle: string, type: 'bookmarks' | 'notes'): string {
   const sanitized = sanitizeFilename(bookTitle);
   const date = new Date().toISOString().split('T')[0];
   return `${sanitized}-${type}-${date}.md`;
 }
 
-export function formatAnnotationsAsMarkdown(
+export function formatBookmarksAsMarkdown(
   bookTitle: string,
   bookAuthor: string,
-  highlights: { text: string; note?: string; color: string; dateCreated: number }[],
   bookmarks: { displayText?: string; note?: string; dateCreated: number }[]
 ): string {
   let markdown = `# ${bookTitle}\n`;
@@ -94,18 +93,6 @@ export function formatAnnotationsAsMarkdown(
     month: 'long',
     day: 'numeric'
   })}\n\n`;
-
-  if (highlights.length > 0) {
-    markdown += `## Highlights (${highlights.length})\n\n`;
-    highlights.forEach((h, i) => {
-      markdown += `### ${i + 1}. ${h.color.charAt(0).toUpperCase() + h.color.slice(1)} Highlight\n`;
-      markdown += `> ${h.text}\n\n`;
-      if (h.note) {
-        markdown += `**Note:** ${h.note}\n\n`;
-      }
-      markdown += `*${formatDate(h.dateCreated)}*\n\n---\n\n`;
-    });
-  }
 
   if (bookmarks.length > 0) {
     markdown += `## Bookmarks (${bookmarks.length})\n\n`;

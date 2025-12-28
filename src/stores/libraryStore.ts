@@ -1,13 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import type { Book, Collection, Bookmark, Highlight, ReadingStatus } from '../types';
+import type { Book, Collection, Bookmark, ReadingStatus } from '../types';
 
 interface LibraryState {
   books: Book[];
   collections: Collection[];
   bookmarks: Bookmark[];
-  highlights: Highlight[];
 
   // Book actions
   addBook: (book: Omit<Book, 'id' | 'dateAdded' | 'progress' | 'readingTime' | 'status' | 'collectionIds' | 'tags'>) => Book;
@@ -30,12 +29,6 @@ interface LibraryState {
   updateBookmark: (id: string, updates: Partial<Bookmark>) => void;
   removeBookmark: (id: string) => void;
   getBookBookmarks: (bookId: string) => Bookmark[];
-
-  // Highlight actions
-  addHighlight: (highlight: Omit<Highlight, 'id' | 'dateCreated'>) => Highlight;
-  updateHighlight: (id: string, updates: Partial<Highlight>) => void;
-  removeHighlight: (id: string) => void;
-  getBookHighlights: (bookId: string) => Highlight[];
 }
 
 export const useLibraryStore = create<LibraryState>()(
@@ -44,7 +37,6 @@ export const useLibraryStore = create<LibraryState>()(
       books: [],
       collections: [],
       bookmarks: [],
-      highlights: [],
 
       // Book actions
       addBook: (bookData) => {
@@ -74,7 +66,6 @@ export const useLibraryStore = create<LibraryState>()(
         set((state) => ({
           books: state.books.filter((book) => book.id !== id),
           bookmarks: state.bookmarks.filter((b) => b.bookId !== id),
-          highlights: state.highlights.filter((h) => h.bookId !== id),
           collections: state.collections.map((collection) => ({
             ...collection,
             bookIds: collection.bookIds.filter((bookId) => bookId !== id),
@@ -211,35 +202,6 @@ export const useLibraryStore = create<LibraryState>()(
 
       getBookBookmarks: (bookId) => {
         return get().bookmarks.filter((b) => b.bookId === bookId);
-      },
-
-      // Highlight actions
-      addHighlight: (highlightData) => {
-        const highlight: Highlight = {
-          id: uuidv4(),
-          ...highlightData,
-          dateCreated: Date.now(),
-        };
-        set((state) => ({ highlights: [...state.highlights, highlight] }));
-        return highlight;
-      },
-
-      updateHighlight: (id, updates) => {
-        set((state) => ({
-          highlights: state.highlights.map((h) =>
-            h.id === id ? { ...h, ...updates } : h
-          ),
-        }));
-      },
-
-      removeHighlight: (id) => {
-        set((state) => ({
-          highlights: state.highlights.filter((h) => h.id !== id),
-        }));
-      },
-
-      getBookHighlights: (bookId) => {
-        return get().highlights.filter((h) => h.bookId === bookId);
       },
     }),
     {
