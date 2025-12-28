@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Book } from '../../types';
-import { formatReadingTime } from '../../utils';
+import { formatReadingTime, formatDate } from '../../utils';
 
 interface BookCardProps {
   book: Book;
@@ -39,12 +39,16 @@ export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardPro
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-[var(--text-primary)] truncate">{book.title}</h3>
           <p className="text-sm text-[var(--text-secondary)] truncate italic">{book.author}</p>
-          {book.readingTime > 0 && (
-            <div className="mt-2 text-xs text-[var(--text-muted)]">{formatReadingTime(book.readingTime)}</div>
-          )}
+          <div className="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
+            <span className="px-2 py-0.5 rounded-full border border-[var(--border)]/70 bg-[var(--bg-secondary)]/70 shadow-sm">{Math.round(book.progress)}% read</span>
+            {book.readingTime > 0 && <span>{formatReadingTime(book.readingTime)}</span>}
+          </div>
         </div>
 
-        <div className="text-right text-xs text-[var(--text-muted)]" />
+        {/* Meta */}
+        <div className="text-right text-xs text-[var(--text-muted)]">
+          {book.lastOpened && <div>{formatDate(book.lastOpened)}</div>}
+        </div>
       </div>
     );
   }
@@ -83,7 +87,10 @@ export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardPro
       <div className="mt-3 px-1 space-y-1">
         <h3 className="font-semibold text-[var(--text-primary)] line-clamp-1">{book.title}</h3>
         <p className="text-sm text-[var(--text-secondary)] line-clamp-1 italic">{book.author}</p>
-        {book.readingTime > 0 && <div className="text-[11px] text-[var(--text-muted)]">{formatReadingTime(book.readingTime)}</div>}
+        <div className="flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
+          <span className="px-2 py-0.5 rounded-full border border-[var(--border)]/70 bg-[var(--bg-secondary)]/70 shadow-sm">{Math.round(book.progress)}% read</span>
+          {book.lastOpened && <span>Opened {formatDate(book.lastOpened)}</span>}
+        </div>
       </div>
     </div>
   );
