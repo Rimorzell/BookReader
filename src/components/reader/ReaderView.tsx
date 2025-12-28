@@ -6,7 +6,7 @@ import { ReaderBottomBar } from './ReaderBottomBar';
 import { TableOfContents } from './TableOfContents';
 import { ReaderSettings } from './ReaderSettings';
 import { BookmarksPanel } from './BookmarksPanel';
-import { useReaderStore, useLibraryStore } from '../../stores';
+import { useReaderStore, useLibraryStore, useSettingsStore } from '../../stores';
 import { UI_CONSTANTS } from '../../constants';
 import type { TocItem } from '../../types';
 
@@ -29,9 +29,26 @@ export function ReaderView() {
     endSession,
     reset,
   } = useReaderStore();
+  const { updateReaderSettings } = useSettingsStore();
 
   const [toc, setToc] = useState<TocItem[]>([]);
   const rendererRef = useRef<EpubRendererRef | null>(null);
+  const recommendedSettings = {
+    theme: 'sepia' as const,
+    fontFamily: 'Georgia',
+    fontSize: 18,
+    lineHeight: 1.8,
+    letterSpacing: 0,
+    textAlign: 'justify' as const,
+    marginHorizontal: 72,
+    marginVertical: 48,
+    maxWidth: 780,
+    paragraphSpacing: 1.25,
+    pageAnimation: 'slide' as const,
+    viewMode: 'paginated' as const,
+    showProgress: true,
+    twoPageSpread: false,
+  };
 
   const book = books.find((b) => b.id === bookId);
 
@@ -205,6 +222,8 @@ export function ReaderView() {
       <ReaderTopBar
         book={book}
         visible={isUIVisible}
+        recommendedSettings={recommendedSettings}
+        onApplyRecommended={() => updateReaderSettings(recommendedSettings)}
       />
 
       {/* Reader content with navigation arrows */}

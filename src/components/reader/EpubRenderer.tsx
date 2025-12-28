@@ -107,6 +107,30 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
     let isActive = true;
     const currentContainer = containerRef.current;
+    let regenerateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const regenerateLocations = async () => {
+      if (!epubRef.current || !renditionRef.current || !isActive) return;
+      try {
+        await epubRef.current.locations.generate(2048);
+        const totalLocs = epubRef.current.locations.length();
+        setTotalLocations(totalLocs);
+
+        const currentLoc = (renditionRef.current as unknown as { currentLocation: () => Location | null }).currentLocation?.();
+        if (currentLoc?.start?.cfi && totalLocs > 0) {
+          const percentage = epubRef.current.locations.percentageFromCfi(currentLoc.start.cfi) || 0;
+          const locationIndex = epubRef.current.locations.locationFromCfi?.(currentLoc.start.cfi);
+          const progress = Math.min(100, Math.max(0, Math.round(percentage * 100)));
+          const currentPage = typeof locationIndex === 'number'
+            ? Math.min(totalLocs, Math.max(1, locationIndex + 1))
+            : Math.max(1, Math.floor(percentage * totalLocs) + 1);
+
+          updateLocation(currentLoc.start.cfi, currentPage, totalLocs || 1, progress);
+        }
+      } catch (err) {
+        console.error('Failed to regenerate locations', err);
+      }
+    };
 
     const handleLocationChange = (location: Location) => {
       if (!epubRef.current || !location.start || !isActive) return;
@@ -171,41 +195,45 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         }
 
         // Get table of contents
-        const toc = await getTableOfContents(epub);
-        onTocLoadedRef.current(toc);
+      const toc = await getTableOfContents(epub);
+      onTocLoadedRef.current(toc);
 
-        // Create rendition
-        const rendition = epub.renderTo(currentContainer, {
-          width: '100%',
-          height: '100%',
-          flow: readerSettings.viewMode === 'scroll' ? 'scrolled' : 'paginated',
-          spread: readerSettings.twoPageSpread ? 'auto' : 'none',
-        });
+      // Create rendition
+      const rendition = epub.renderTo(currentContainer, {
+        width: '100%',
+        height: '100%',
+        flow: readerSettings.viewMode === 'scroll' ? 'scrolled' : 'paginated',
+        spread: readerSettings.twoPageSpread ? 'auto' : 'none',
+      });
 
-        renditionRef.current = rendition;
+      renditionRef.current = rendition;
 
-        // Apply styles
-        applyStyles(rendition);
+      // Apply styles
+      applyStyles(rendition);
 
-        // Display at last position or beginning FIRST (before generating locations)
-        if (book.currentLocation) {
-          await rendition.display(book.currentLocation);
-        } else {
-          await rendition.display();
-        }
+      // Display at last position or beginning FIRST (before generating locations)
+      if (book.currentLocation) {
+        await rendition.display(book.currentLocation);
+      } else {
+        await rendition.display();
+      }
 
-        if (!isActive) {
-          epub.destroy();
-          return;
-        }
+      if (!isActive) {
+        epub.destroy();
+        return;
+      }
 
-        // Set up event handlers immediately so user can start reading
-        rendition.on('relocated', handleLocationChange as unknown as (...args: unknown[]) => void);
-        rendition.on('rendered', () => applyStyles(rendition));
+      // Set up event handlers immediately so user can start reading
+      rendition.on('relocated', handleLocationChange as unknown as (...args: unknown[]) => void);
+      rendition.on('rendered', () => applyStyles(rendition));
+      rendition.on('resized', () => {
+        if (regenerateTimeout) clearTimeout(regenerateTimeout);
+        regenerateTimeout = setTimeout(() => void regenerateLocations(), 120);
+      });
 
-        // Start reading session and hide loading - book is now visible
-        startSession();
-        setLoading(false);
+      // Start reading session and hide loading - book is now visible
+      startSession();
+      setLoading(false);
 
         // Generate locations in background (for progress tracking)
         // Use larger chunk size (2048) for faster generation
@@ -247,6 +275,9 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         epubRef.current.destroy();
         epubRef.current = null;
       }
+      if (regenerateTimeout) {
+        clearTimeout(regenerateTimeout);
+      }
       renditionRef.current = null;
     };
   // Only re-run when the book file changes
@@ -259,6 +290,55 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       applyStyles(renditionRef.current);
     }
   }, [applyStyles, readerSettings]);
+
+  // Regenerate locations when reading settings that affect layout change
+  useEffect(() => {
+    if (!epubRef.current || !renditionRef.current) return;
+
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const handle = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        void epubRef.current?.locations.generate(2048).then(() => {
+          const totalLocs = epubRef.current?.locations.length() ?? 0;
+          if (totalLocs > 0) {
+            setTotalLocations(totalLocs);
+            const currentLoc = (renditionRef.current as unknown as { currentLocation: () => Location | null }).currentLocation?.();
+            if (currentLoc?.start?.cfi) {
+              try {
+                const percentage = epubRef.current?.locations.percentageFromCfi(currentLoc.start.cfi) || 0;
+                const locationIndex = epubRef.current?.locations.locationFromCfi?.(currentLoc.start.cfi);
+                const progress = Math.min(100, Math.max(0, Math.round((percentage || 0) * 100)));
+                const currentPage = typeof locationIndex === 'number'
+                  ? Math.min(totalLocs, Math.max(1, locationIndex + 1))
+                  : Math.max(1, Math.floor((percentage || 0) * totalLocs) + 1);
+                updateLocation(currentLoc.start.cfi, currentPage, totalLocs || 1, progress);
+              } catch {
+                // ignore
+              }
+            }
+          }
+        });
+      }, 120);
+    };
+
+    handle();
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [
+    readerSettings.fontSize,
+    readerSettings.lineHeight,
+    readerSettings.letterSpacing,
+    readerSettings.marginHorizontal,
+    readerSettings.marginVertical,
+    readerSettings.maxWidth,
+    readerSettings.viewMode,
+    readerSettings.twoPageSpread,
+    updateLocation,
+    setTotalLocations,
+  ]);
 
   // Keyboard navigation
   useEffect(() => {

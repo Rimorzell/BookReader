@@ -4,10 +4,19 @@ import { useReaderStore } from '../../stores';
 interface ReaderTopBarProps {
   book: Book;
   visible: boolean;
+  recommendedSettings: {
+    theme: string;
+    fontFamily: string;
+    fontSize: number;
+    lineHeight: number;
+  };
+  onApplyRecommended: () => void;
 }
 export function ReaderTopBar({
   book,
   visible,
+  recommendedSettings,
+  onApplyRecommended,
 }: ReaderTopBarProps) {
   const navigate = useNavigate();
   const { currentChapter } = useReaderStore();
@@ -41,6 +50,21 @@ export function ReaderTopBar({
             </p>
           )}
         </div>
+      </div>
+      <div className="hidden sm:flex items-center gap-2 text-[11px] text-[var(--text-secondary)]">
+        <div className="px-3 py-1 rounded-full border border-[var(--border)]/70 bg-[var(--bg-primary)]/70 shadow-sm">
+          <span className="font-semibold text-[var(--text-primary)]">Suggested</span>
+          <span className="mx-2 text-[var(--text-secondary)]">|</span>
+          <span className="font-medium text-[var(--text-primary)]">
+            {recommendedSettings.theme} · {recommendedSettings.fontFamily} · {recommendedSettings.fontSize}px
+          </span>
+        </div>
+        <button
+          onClick={onApplyRecommended}
+          className="px-3 py-1 rounded-full bg-[var(--accent)]/90 text-white text-[11px] font-semibold shadow-md hover:shadow-lg transition transform hover:-translate-y-[1px]"
+        >
+          Apply
+        </button>
       </div>
     </header>
   );
