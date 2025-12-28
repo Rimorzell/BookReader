@@ -34,8 +34,8 @@ export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardPro
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-serif text-[var(--text-primary)] truncate">{book.title}</h3>
-          <p className="text-sm text-[var(--text-secondary)] truncate italic">{book.author}</p>
+          <h3 className="font-serif text-[var(--text-primary)]">{book.title}</h3>
+          <p className="text-sm text-[var(--text-secondary)] italic">{book.author}</p>
         </div>
 
         {/* Last read */}
@@ -73,8 +73,8 @@ export function BookCard({ book, viewMode, onClick, onContextMenu }: BookCardPro
 
       {/* Book info */}
       <div className="mt-2 px-1">
-        <h3 className="font-serif text-[var(--text-primary)] line-clamp-1">{book.title}</h3>
-        <p className="text-sm text-[var(--text-secondary)] line-clamp-1 italic">{book.author}</p>
+        <h3 className="font-serif text-[var(--text-primary)] line-clamp-2">{book.title}</h3>
+        <p className="text-sm text-[var(--text-secondary)] italic">{book.author}</p>
         {book.lastOpened && (
           <p className="text-xs text-[var(--text-muted)] mt-1 font-serif">
             {formatDate(book.lastOpened)}

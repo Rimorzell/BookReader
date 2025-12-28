@@ -206,8 +206,8 @@ export function ReaderView() {
         </button>
 
         {/* Book content */}
-        <div className="h-full flex justify-center px-16 py-4">
-          <div className="h-full w-full max-w-3xl">
+        <div className="h-full flex justify-center items-center px-16">
+          <div className="h-full w-full max-w-3xl py-8">
             {book.fileType === 'epub' && (
               <EpubRenderer ref={rendererRef} book={book} onTocLoaded={handleTocLoaded} />
             )}

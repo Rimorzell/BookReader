@@ -1,10 +1,12 @@
 import { useSettingsStore } from '../../stores';
 import { Slider, Dropdown } from '../common';
-import { fontFamilies, type Theme } from '../../types';
+import { fontFamilies, type Theme, defaultReaderSettings } from '../../types';
+
 interface ReaderSettingsProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
 export function ReaderSettings({ isOpen, onClose }: ReaderSettingsProps) {
   const {
     settings,
@@ -15,29 +17,38 @@ export function ReaderSettings({ isOpen, onClose }: ReaderSettingsProps) {
     setMargins,
     setTextAlign,
   } = useSettingsStore();
+
   const { reader } = settings;
+
   const themes: { id: Theme; label: string; bg: string; text: string }[] = [
     { id: 'light', label: 'Light', bg: '#ffffff', text: '#1d1d1f' },
     { id: 'sepia', label: 'Sepia', bg: '#f8f3e8', text: '#433422' },
     { id: 'dark', label: 'Dark', bg: '#1c1c1e', text: '#f5f5f7' },
     { id: 'black', label: 'Black', bg: '#000000', text: '#ffffff' },
   ];
+
   if (!isOpen) return null;
+
   return (
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-50 bg-black/30" onClick={onClose} />
+
       {/* Panel */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--bg-primary)] rounded-t-2xl shadow-2xl slide-up">
         {/* Handle */}
         <div className="flex justify-center py-3">
           <div className="w-10 h-1 rounded-full bg-[var(--bg-tertiary)]" />
         </div>
+
         {/* Content */}
         <div className="px-6 pb-8 max-h-[70vh] overflow-y-auto">
           {/* Theme selection */}
           <section className="mb-6">
-            <h3 className="text-sm font-medium text-[var(--text-primary)] mb-3">Theme</h3>
+            <div className="flex items-baseline justify-between mb-3">
+              <h3 className="text-sm font-medium text-[var(--text-primary)]">Theme</h3>
+              <span className="text-xs text-[var(--text-muted)] italic">recommended: Light</span>
+            </div>
             <div className="flex gap-3">
               {themes.map((theme) => (
                 <button
@@ -61,15 +72,20 @@ export function ReaderSettings({ isOpen, onClose }: ReaderSettingsProps) {
               ))}
             </div>
           </section>
+
           {/* Font family */}
           <section className="mb-6">
+            <div className="flex items-baseline justify-between mb-1">
+              <span className="text-sm font-medium text-[var(--text-primary)]">Font</span>
+              <span className="text-xs text-[var(--text-muted)] italic">recommended: {defaultReaderSettings.fontFamily}</span>
+            </div>
             <Dropdown
-              label="Font"
               options={fontFamilies.map((f) => ({ value: f.value, label: f.name }))}
               value={reader.fontFamily}
               onChange={setFontFamily}
             />
           </section>
+
           {/* Font size */}
           <section className="mb-6">
             <Slider
@@ -81,7 +97,9 @@ export function ReaderSettings({ isOpen, onClose }: ReaderSettingsProps) {
               step={1}
               formatValue={(v) => `${v}px`}
             />
+            <p className="text-xs text-[var(--text-muted)] italic mt-1">recommended: {defaultReaderSettings.fontSize}px</p>
           </section>
+
           {/* Line height */}
           <section className="mb-6">
             <Slider
@@ -93,7 +111,9 @@ export function ReaderSettings({ isOpen, onClose }: ReaderSettingsProps) {
               step={0.1}
               formatValue={(v) => v.toFixed(1)}
             />
+            <p className="text-xs text-[var(--text-muted)] italic mt-1">recommended: {defaultReaderSettings.lineHeight}</p>
           </section>
+
           {/* Margins */}
           <section className="mb-6">
             <Slider
@@ -105,10 +125,15 @@ export function ReaderSettings({ isOpen, onClose }: ReaderSettingsProps) {
               step={10}
               formatValue={(v) => `${v}px`}
             />
+            <p className="text-xs text-[var(--text-muted)] italic mt-1">recommended: {defaultReaderSettings.marginHorizontal}px</p>
           </section>
+
           {/* Text alignment */}
           <section className="mb-6">
-            <h3 className="text-sm font-medium text-[var(--text-primary)] mb-3">Text Alignment</h3>
+            <div className="flex items-baseline justify-between mb-3">
+              <h3 className="text-sm font-medium text-[var(--text-primary)]">Text Alignment</h3>
+              <span className="text-xs text-[var(--text-muted)] italic">recommended: Left</span>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setTextAlign('left')}
@@ -136,6 +161,7 @@ export function ReaderSettings({ isOpen, onClose }: ReaderSettingsProps) {
               </button>
             </div>
           </section>
+
           {/* Quick font size buttons */}
           <section className="mb-2">
             <div className="flex items-center justify-center gap-4">
