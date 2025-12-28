@@ -1,13 +1,12 @@
 import { useReaderStore, useSettingsStore } from '../../stores';
-import { UI_CONSTANTS } from '../../constants';
 
 interface ReaderBottomBarProps {
   visible: boolean;
-  onScrubProgress: (percentage: number) => void;
+  onHover: () => void;
 }
 export function ReaderBottomBar({
   visible,
-  onScrubProgress,
+  onHover,
 }: ReaderBottomBarProps) {
   const {
     progress,
@@ -41,6 +40,7 @@ export function ReaderBottomBar({
       className={`absolute bottom-0 left-0 right-0 z-40 px-5 pb-4 pt-3 bg-[var(--bg-primary)]/85 backdrop-blur-lg border-t border-[var(--border)]/60 transition-all duration-300 ${
         visible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
       }`}
+      onMouseEnter={onHover}
     >
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-2">
         <div className="flex items-center justify-between text-[var(--text-secondary)] text-[10px] uppercase tracking-[0.12em]">
@@ -85,6 +85,7 @@ export function ReaderBottomBar({
             <span className="text-[var(--text-secondary)]">Tap or drag to jump</span>
           </div>
         )}
+        <span className="text-[12px] italic text-[var(--text-muted)]">{roundedProgress}% read</span>
       </div>
     </footer>
   );

@@ -83,27 +83,19 @@ export function ReaderView() {
     resetHideTimeout();
   }, [isUIVisible, showUI, resetHideTimeout]);
 
+  const handleUIHover = useCallback(() => {
+    showUI();
+    resetHideTimeout();
+  }, [showUI, resetHideTimeout]);
+
   // Handle click on reading area to toggle UI
   const handleReaderClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     // Only toggle if clicking on the reader area, not controls
     if (target.closest('[data-reader-content]')) {
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const width = rect.width;
-
-      // Left/right edges for navigation, center for UI toggle
-      if (x > width * UI_CONSTANTS.CLICK_ZONE_PREV && x < width * UI_CONSTANTS.CLICK_ZONE_NEXT) {
-        // If UI is visible, hide it; if hidden, show it
-        if (isUIVisible) {
-          hideUI();
-        } else {
-          showUI();
-          resetHideTimeout();
-        }
-      }
+      hideUI();
     }
-  }, [isUIVisible, hideUI, showUI, resetHideTimeout]);
+  }, [hideUI]);
 
   // Keyboard shortcuts for quick access
   useEffect(() => {
@@ -267,7 +259,7 @@ export function ReaderView() {
       </div>
 
       {/* Bottom bar */}
-      <ReaderBottomBar visible={isUIVisible} onScrubProgress={handleScrubProgress} />
+      <ReaderBottomBar visible={isUIVisible} onHover={handleUIHover} />
 
       {/* Table of Contents */}
       <TableOfContents

@@ -28,6 +28,7 @@ export function ReaderTopBar({
       className={`absolute top-0 left-0 right-0 z-40 flex items-center px-4 py-3 bg-[var(--bg-primary)]/80 backdrop-blur-lg border-b border-[var(--border)]/60 shadow-sm transition-all duration-300 ${
         visible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
       }`}
+      onMouseEnter={onHover}
     >
       {/* Close button and book info */}
       <div className="flex items-center gap-4">
