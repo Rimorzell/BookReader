@@ -92,6 +92,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       style.id = 'bookreader-injected-styles';
       style.textContent = `
         /* Theme colors - ensures text is readable on all themes */
+        /* Use high specificity selectors to override EPUB styles */
         :root, html, body {
           color: ${themeColors.text} !important;
           background-color: ${themeColors.background} !important;
@@ -111,18 +112,52 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
           background-repeat: no-repeat !important;
         }
 
-        * {
+        /* Force text color on ALL elements - handles inline styles from EPUBs */
+        *, *::before, *::after {
           color: ${themeColors.text} !important;
+        }
+
+        /* SVG elements need separate handling for fill/stroke */
+        svg, svg * {
           fill: ${themeColors.text} !important;
           stroke: ${themeColors.text} !important;
         }
 
-        a, a:visited, a:hover {
-          color: ${themeColors.link} !important;
+        /* Preserve image colors - don't apply text color filter to images */
+        img {
+          color: unset !important;
         }
 
-        /* Prevent images from being split across columns/pages */
-        img, svg, figure, .image, [class*="image"], [class*="cover"], [class*="title"] {
+        /* Explicitly handle common text elements that EPUBs may style inline */
+        h1, h2, h3, h4, h5, h6, p, span, div, li, td, th,
+        blockquote, cite, em, strong, b, i, u, s, small, big,
+        article, section, header, footer, nav, aside, main,
+        label, caption, figcaption, legend, dt, dd, address,
+        pre, code, samp, kbd, var, abbr, acronym, dfn, q, sub, sup {
+          color: ${themeColors.text} !important;
+          -webkit-text-fill-color: ${themeColors.text} !important;
+        }
+
+        a, a:visited, a:hover, a:active, a:focus {
+          color: ${themeColors.link} !important;
+          -webkit-text-fill-color: ${themeColors.link} !important;
+        }
+
+        /* Override any inline style attributes that set color */
+        [style*="color"] {
+          color: ${themeColors.text} !important;
+          -webkit-text-fill-color: ${themeColors.text} !important;
+        }
+
+        a[style*="color"], a[style*="color"]:visited {
+          color: ${themeColors.link} !important;
+          -webkit-text-fill-color: ${themeColors.link} !important;
+        }
+
+        /* ========== PAGE BREAK PREVENTION FOR IMAGES ========== */
+
+        /* Base image styles - prevent splitting */
+        img, svg {
           max-width: 100% !important;
           max-height: 85vh !important;
           width: auto !important;
@@ -136,27 +171,95 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
           overflow: hidden !important;
         }
 
-        /* For title pages and full-page images */
-        body > div:first-child img,
-        section:first-of-type img,
-        .titlepage img,
-        .halftitlepage img {
-          max-height: 80vh !important;
+        /* Figure elements - common wrapper for images */
+        figure {
+          max-width: 100% !important;
+          max-height: 90vh !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          -webkit-column-break-inside: avoid !important;
+          display: block !important;
+          margin: 0 auto !important;
+          overflow: hidden !important;
+          background-color: ${themeColors.background} !important;
         }
 
-        /* Prevent any element containing only an image from breaking */
-        div:has(> img:only-child),
-        p:has(> img:only-child),
-        figure,
-        section:has(> img:only-child),
-        section:has(> figure:only-child) {
+        /* Cover pages and title pages - these are typically at the beginning */
+        /* Target common class names and structural patterns */
+        .cover, .titlepage, .halftitlepage, .frontmatter,
+        .image, .illustration, .figure, .full-page,
+        [class*="cover"], [class*="title"], [class*="image"],
+        [class*="frontmatter"], [class*="illustration"],
+        [id*="cover"], [id*="title"] {
+          max-width: 100% !important;
+          max-height: 95vh !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          -webkit-column-break-inside: avoid !important;
+          page-break-before: auto !important;
+          page-break-after: auto !important;
+          display: block !important;
+          overflow: hidden !important;
+        }
+
+        /* First child elements often contain cover/title images */
+        body > *:first-child,
+        body > div:first-child,
+        body > section:first-child {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          -webkit-column-break-inside: avoid !important;
+        }
+
+        /* Images inside first elements */
+        body > *:first-child img,
+        body > div:first-child img,
+        body > section:first-child img,
+        section:first-of-type img,
+        .titlepage img,
+        .halftitlepage img,
+        .cover img,
+        [class*="cover"] img {
+          max-height: 90vh !important;
+          max-width: 100% !important;
+          height: auto !important;
+          width: auto !important;
+        }
+
+        /* Containers with single images - fallback without :has() for Safari 13 */
+        /* These elements commonly wrap images */
+        figure, .image, .illustration, .figure,
+        [class*="image"], [class*="figure"], [class*="illustration"] {
           page-break-inside: avoid !important;
           break-inside: avoid !important;
           -webkit-column-break-inside: avoid !important;
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
+          flex-direction: column !important;
           background-color: ${themeColors.background} !important;
+        }
+
+        /* Modern browsers: use :has() for more precise targeting */
+        @supports selector(:has(*)) {
+          div:has(> img:only-child),
+          p:has(> img:only-child),
+          section:has(> img:only-child),
+          section:has(> figure:only-child) {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            -webkit-column-break-inside: avoid !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background-color: ${themeColors.background} !important;
+          }
+        }
+
+        /* Prevent orphans and widows for text content */
+        p, h1, h2, h3, h4, h5, h6 {
+          orphans: 3 !important;
+          widows: 3 !important;
         }
       `;
       doc.head.appendChild(style);
@@ -363,7 +466,19 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
         // Set up event handlers immediately so user can start reading
         rendition.on('relocated', handleLocationChange as unknown as (...args: unknown[]) => void);
-        rendition.on('rendered', () => applyStyles(rendition));
+        rendition.on('rendered', () => {
+          applyStyles(rendition);
+          // Also re-inject CSS styles on render to ensure theme is applied
+          // This is critical for production builds where content may be re-rendered
+          try {
+            const contents = rendition.getContents();
+            contents.forEach((content: ContentLike) => {
+              injectContentStyles(content);
+            });
+          } catch {
+            // Ignore errors if contents aren't ready
+          }
+        });
         rendition.on('resized', () => {
           if (regenerateTimeout) clearTimeout(regenerateTimeout);
           regenerateTimeout = setTimeout(() => void regenerateLocations(), 120);
