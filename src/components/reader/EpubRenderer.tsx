@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useRef, useCallback, useImperativeHandle } from 'react';
 import ePub, { type Book as EpubBook, type Rendition, type Location } from 'epubjs';
+import type Contents from 'epubjs/types/contents';
 import { useReaderStore, useSettingsStore, useLibraryStore, toast } from '../../stores';
 import type { Book, TocItem } from '../../types';
 import { getTableOfContents } from '../../utils/epubParser';
@@ -70,7 +71,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   }, [readerSettings]);
 
   // Inject CSS directly into epub content - more reliable than themes.default() in production
-  const injectContentStyles = useCallback((contents: { document: Document }) => {
+  const injectContentStyles = useCallback((contents: Contents) => {
     try {
       const doc = contents.document;
       const themeColors = getThemeColors(readerSettings.theme);
@@ -85,16 +86,29 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       style.id = 'bookreader-injected-styles';
       style.textContent = `
         /* Theme colors - ensures text is readable on all themes */
-        body {
+        :root, html, body {
           color: ${themeColors.text} !important;
           background-color: ${themeColors.background} !important;
+        }
+
+        body {
           font-family: ${readerSettings.fontFamily} !important;
           font-size: ${readerSettings.fontSize}px !important;
           line-height: ${readerSettings.lineHeight} !important;
+          margin: 0 auto !important;
+          padding: ${readerSettings.marginVertical}px ${readerSettings.marginHorizontal}px !important;
+          max-width: ${readerSettings.maxWidth}px !important;
+          min-height: 100vh !important;
+          column-gap: 0 !important;
+          background-position: center !important;
+          background-size: contain !important;
+          background-repeat: no-repeat !important;
         }
 
         * {
-          color: inherit !important;
+          color: ${themeColors.text} !important;
+          fill: ${themeColors.text} !important;
+          stroke: ${themeColors.text} !important;
         }
 
         a, a:visited, a:hover {
@@ -105,9 +119,11 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         img, svg, figure, .image, [class*="image"], [class*="cover"], [class*="title"] {
           max-width: 100% !important;
           max-height: 85vh !important;
+          width: auto !important;
           height: auto !important;
           display: block !important;
           margin: 0 auto !important;
+          object-fit: contain !important;
           page-break-inside: avoid !important;
           break-inside: avoid !important;
           -webkit-column-break-inside: avoid !important;
@@ -120,23 +136,36 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         .titlepage img,
         .halftitlepage img {
           max-height: 80vh !important;
-          object-fit: contain !important;
         }
 
         /* Prevent any element containing only an image from breaking */
         div:has(> img:only-child),
         p:has(> img:only-child),
-        figure {
+        figure,
+        section:has(> img:only-child),
+        section:has(> figure:only-child) {
           page-break-inside: avoid !important;
           break-inside: avoid !important;
           -webkit-column-break-inside: avoid !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          background-color: ${themeColors.background} !important;
         }
       `;
       doc.head.appendChild(style);
     } catch (err) {
       console.debug('Could not inject content styles:', err);
     }
-  }, [readerSettings.theme, readerSettings.fontFamily, readerSettings.fontSize, readerSettings.lineHeight]);
+  }, [
+    readerSettings.fontFamily,
+    readerSettings.fontSize,
+    readerSettings.lineHeight,
+    readerSettings.marginHorizontal,
+    readerSettings.marginVertical,
+    readerSettings.maxWidth,
+    readerSettings.theme,
+  ]);
 
   const goNext = useCallback(() => {
     renditionRef.current?.next();
@@ -269,49 +298,73 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         }
 
         // Get table of contents
-      const toc = await getTableOfContents(epub);
-      onTocLoadedRef.current(toc);
+        const toc = await getTableOfContents(epub);
+        onTocLoadedRef.current(toc);
 
-      // Create rendition
-      const rendition = epub.renderTo(currentContainer, {
-        width: '100%',
-        height: '100%',
-        flow: readerSettings.viewMode === 'scroll' ? 'scrolled' : 'paginated',
-        spread: readerSettings.twoPageSpread ? 'auto' : 'none',
-      });
+        // Create rendition
+        const rendition = epub.renderTo(currentContainer, {
+          width: '100%',
+          height: '100%',
+          flow: readerSettings.viewMode === 'scroll' ? 'scrolled' : 'paginated',
+          spread: readerSettings.twoPageSpread ? 'auto' : 'none',
+        });
 
-      renditionRef.current = rendition;
+        renditionRef.current = rendition;
 
-      // Register hook to inject styles directly into each content document
-      // This is more reliable than themes.default() in production builds
-      rendition.hooks.content.register(injectContentStyles);
+        // Register hook to inject styles directly into each content document
+        // This is more reliable than themes.default() in production builds
+        rendition.hooks.content.register((contents: Contents) => {
+          injectContentStyles(contents);
 
-      // Apply styles
-      applyStyles(rendition);
+          const handleKeyDown = (event: KeyboardEvent) => {
+            const key = event.key.toLowerCase();
 
-      // Display at last position or beginning FIRST (before generating locations)
-      if (book.currentLocation) {
-        await rendition.display(book.currentLocation);
-      } else {
-        await rendition.display();
-      }
+            if (key === 'arrowright' || key === 'pagedown' || key === ' ') {
+              event.preventDefault();
+              goNext();
+            } else if (key === 'arrowleft' || key === 'pageup') {
+              event.preventDefault();
+              goPrev();
+            } else if (key === 'escape') {
+              event.preventDefault();
+              window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+            }
+          };
 
-      if (!isActive) {
-        epub.destroy();
-        return;
-      }
+          contents.document.addEventListener('keydown', handleKeyDown);
+          contents.window?.addEventListener('keydown', handleKeyDown);
+          contents.on('destroy', () => {
+            contents.document.removeEventListener('keydown', handleKeyDown);
+            contents.window?.removeEventListener('keydown', handleKeyDown);
+          });
+        });
 
-      // Set up event handlers immediately so user can start reading
-      rendition.on('relocated', handleLocationChange as unknown as (...args: unknown[]) => void);
-      rendition.on('rendered', () => applyStyles(rendition));
-      rendition.on('resized', () => {
-        if (regenerateTimeout) clearTimeout(regenerateTimeout);
-        regenerateTimeout = setTimeout(() => void regenerateLocations(), 120);
-      });
+        // Apply styles
+        applyStyles(rendition);
 
-      // Start reading session and hide loading - book is now visible
-      startSession();
-      setLoading(false);
+        // Display at last position or beginning FIRST (before generating locations)
+        if (book.currentLocation) {
+          await rendition.display(book.currentLocation);
+        } else {
+          await rendition.display();
+        }
+
+        if (!isActive) {
+          epub.destroy();
+          return;
+        }
+
+        // Set up event handlers immediately so user can start reading
+        rendition.on('relocated', handleLocationChange as unknown as (...args: unknown[]) => void);
+        rendition.on('rendered', () => applyStyles(rendition));
+        rendition.on('resized', () => {
+          if (regenerateTimeout) clearTimeout(regenerateTimeout);
+          regenerateTimeout = setTimeout(() => void regenerateLocations(), 120);
+        });
+
+        // Start reading session and hide loading - book is now visible
+        startSession();
+        setLoading(false);
 
         // Generate locations in background (for progress tracking)
         // Use larger chunk size (2048) for faster generation
