@@ -92,6 +92,11 @@ declare module 'epubjs' {
       register: (name: string, rules: Record<string, Record<string, string>>) => void;
       select: (name: string) => void;
     };
+    hooks: {
+      content: {
+        register: (callback: (contents: { document: Document; window: Window }) => void) => void;
+      };
+    };
     getRange: (cfi: string) => Range;
     getContents: () => {
       document: Document;
