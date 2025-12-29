@@ -77,7 +77,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   }, [readerSettings]);
 
   // Inject CSS directly into epub content - more reliable than themes.default() in production
-  const injectContentStyles = useCallback((contents: ContentLike) => {
+  const injectContentStyles = useCallback((contents: Contents) => {
     try {
       const doc = contents.document;
       const themeColors = getThemeColors(readerSettings.theme);
@@ -319,7 +319,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
         // Register hook to inject styles directly into each content document
         // This is more reliable than themes.default() in production builds
-        rendition.hooks.content.register((contents: ContentLike) => {
+        rendition.hooks.content.register((contents) => {
           injectContentStyles(contents);
 
           const handleKeyDown = (event: KeyboardEvent) => {
@@ -339,15 +339,10 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
           contents.document.addEventListener('keydown', handleKeyDown);
           contents.window?.addEventListener('keydown', handleKeyDown);
-
-          const cleanup = () => {
+          contents.on('destroy', () => {
             contents.document.removeEventListener('keydown', handleKeyDown);
             contents.window?.removeEventListener('keydown', handleKeyDown);
-          };
-
-          if (typeof contents.on === 'function') {
-            contents.on('destroy', cleanup);
-          }
+          });
         });
 
         // Apply styles
