@@ -12,6 +12,12 @@ interface EpubRendererProps {
   onTocLoaded: (toc: TocItem[]) => void;
 }
 
+type ContentLike = Pick<Contents, 'document'> & {
+  window?: Window;
+  on?: (event: string, listener: () => void) => void;
+  off?: (event: string, listener: () => void) => void;
+};
+
 export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   ({ book, onTocLoaded }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -424,7 +430,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       // This ensures theme changes work in production builds
       try {
         const contents = renditionRef.current.getContents();
-        contents.forEach((content: { document: Document }) => {
+        contents.forEach((content: ContentLike) => {
           injectContentStyles(content);
         });
       } catch {
