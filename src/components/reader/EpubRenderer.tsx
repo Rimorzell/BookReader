@@ -62,29 +62,81 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
         a: {
           color: `${themeColors.link} !important`,
         },
-        // Ensure images don't overflow or get split across pages
-        img: {
-          'max-width': '100% !important',
-          'max-height': '90vh !important',
-          'object-fit': 'contain !important',
-          'page-break-inside': 'avoid !important',
-          'break-inside': 'avoid !important',
-        },
-        svg: {
-          'max-width': '100% !important',
-          'max-height': '90vh !important',
-        },
-        // Prevent page breaks inside figures
-        figure: {
-          'page-break-inside': 'avoid !important',
-          'break-inside': 'avoid !important',
-        },
       });
     } catch (err) {
       // Ignore insertRule errors - can happen when iframe isn't fully ready
       console.debug('Could not apply styles:', err);
     }
   }, [readerSettings]);
+
+  // Inject CSS directly into epub content - more reliable than themes.default() in production
+  const injectContentStyles = useCallback((contents: { document: Document }) => {
+    try {
+      const doc = contents.document;
+      const themeColors = getThemeColors(readerSettings.theme);
+
+      // Remove any previously injected style
+      const existingStyle = doc.getElementById('bookreader-injected-styles');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+
+      const style = doc.createElement('style');
+      style.id = 'bookreader-injected-styles';
+      style.textContent = `
+        /* Theme colors - ensures text is readable on all themes */
+        body {
+          color: ${themeColors.text} !important;
+          background-color: ${themeColors.background} !important;
+          font-family: ${readerSettings.fontFamily} !important;
+          font-size: ${readerSettings.fontSize}px !important;
+          line-height: ${readerSettings.lineHeight} !important;
+        }
+
+        * {
+          color: inherit !important;
+        }
+
+        a, a:visited, a:hover {
+          color: ${themeColors.link} !important;
+        }
+
+        /* Prevent images from being split across columns/pages */
+        img, svg, figure, .image, [class*="image"], [class*="cover"], [class*="title"] {
+          max-width: 100% !important;
+          max-height: 85vh !important;
+          height: auto !important;
+          display: block !important;
+          margin: 0 auto !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          -webkit-column-break-inside: avoid !important;
+          overflow: hidden !important;
+        }
+
+        /* For title pages and full-page images */
+        body > div:first-child img,
+        section:first-of-type img,
+        .titlepage img,
+        .halftitlepage img {
+          max-height: 80vh !important;
+          object-fit: contain !important;
+        }
+
+        /* Prevent any element containing only an image from breaking */
+        div:has(> img:only-child),
+        p:has(> img:only-child),
+        figure {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          -webkit-column-break-inside: avoid !important;
+        }
+      `;
+      doc.head.appendChild(style);
+    } catch (err) {
+      console.debug('Could not inject content styles:', err);
+    }
+  }, [readerSettings.theme, readerSettings.fontFamily, readerSettings.fontSize, readerSettings.lineHeight]);
 
   const goNext = useCallback(() => {
     renditionRef.current?.next();
@@ -230,6 +282,10 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
       renditionRef.current = rendition;
 
+      // Register hook to inject styles directly into each content document
+      // This is more reliable than themes.default() in production builds
+      rendition.hooks.content.register(injectContentStyles);
+
       // Apply styles
       applyStyles(rendition);
 
@@ -310,8 +366,19 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   useEffect(() => {
     if (renditionRef.current) {
       applyStyles(renditionRef.current);
+
+      // Also re-inject styles directly into any loaded content views
+      // This ensures theme changes work in production builds
+      try {
+        const contents = renditionRef.current.getContents();
+        contents.forEach((content: { document: Document }) => {
+          injectContentStyles(content);
+        });
+      } catch {
+        // Ignore errors if contents aren't available yet
+      }
     }
-  }, [applyStyles, readerSettings]);
+  }, [applyStyles, injectContentStyles, readerSettings]);
 
   // Regenerate locations when reading settings that affect layout change
   useEffect(() => {
