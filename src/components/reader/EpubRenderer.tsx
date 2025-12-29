@@ -313,7 +313,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
         // Register hook to inject styles directly into each content document
         // This is more reliable than themes.default() in production builds
-        rendition.hooks.content.register((contents: Contents) => {
+        rendition.hooks.content.register((contents) => {
           injectContentStyles(contents);
 
           const handleKeyDown = (event: KeyboardEvent) => {
