@@ -82,6 +82,22 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
       const doc = contents.document;
       const themeColors = getThemeColors(readerSettings.theme);
 
+      // CRITICAL: Set inline styles directly on body - this has highest priority
+      // and cannot be overridden by any stylesheet
+      const body = doc.body;
+      if (body) {
+        body.style.setProperty('color', themeColors.text, 'important');
+        body.style.setProperty('background-color', themeColors.background, 'important');
+        body.style.setProperty('-webkit-text-fill-color', themeColors.text, 'important');
+      }
+
+      // Also set on html element for full coverage
+      const html = doc.documentElement;
+      if (html) {
+        html.style.setProperty('color', themeColors.text, 'important');
+        html.style.setProperty('background-color', themeColors.background, 'important');
+      }
+
       // Remove any previously injected style
       const existingStyle = doc.getElementById('bookreader-injected-styles');
       if (existingStyle) {
@@ -262,7 +278,43 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
           widows: 3 !important;
         }
       `;
+
+      // Append style to the END of head to ensure it comes after EPUB styles
       doc.head.appendChild(style);
+
+      // Apply inline styles directly to ALL text elements for maximum override
+      // This ensures even elements with inline styles are overridden
+      const applyInlineStylesToElements = () => {
+        const textElements = doc.querySelectorAll(
+          'h1, h2, h3, h4, h5, h6, p, span, div, li, td, th, blockquote, ' +
+          'cite, em, strong, b, i, u, s, article, section, header, footer, ' +
+          'pre, code, figcaption, dt, dd, address, label'
+        );
+        textElements.forEach((el) => {
+          const htmlEl = el as HTMLElement;
+          // Only set if not already set to our theme color
+          const currentColor = htmlEl.style.getPropertyValue('color');
+          if (currentColor !== themeColors.text) {
+            htmlEl.style.setProperty('color', themeColors.text, 'important');
+            htmlEl.style.setProperty('-webkit-text-fill-color', themeColors.text, 'important');
+          }
+        });
+
+        // Handle links separately
+        const links = doc.querySelectorAll('a');
+        links.forEach((el) => {
+          el.style.setProperty('color', themeColors.link, 'important');
+          el.style.setProperty('-webkit-text-fill-color', themeColors.link, 'important');
+        });
+      };
+
+      // Apply immediately
+      applyInlineStylesToElements();
+
+      // Also apply after a short delay to catch any late-loading content
+      // This is critical for production builds where styles may load asynchronously
+      setTimeout(applyInlineStylesToElements, 50);
+      setTimeout(applyInlineStylesToElements, 150);
     } catch (err) {
       console.debug('Could not inject content styles:', err);
     }
