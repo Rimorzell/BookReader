@@ -1,6 +1,5 @@
 import { forwardRef, useEffect, useRef, useCallback, useImperativeHandle } from 'react';
 import ePub, { type Book as EpubBook, type Rendition, type Location } from 'epubjs';
-import type Contents from 'epubjs/types/contents';
 import { useReaderStore, useSettingsStore, useLibraryStore, toast } from '../../stores';
 import type { Book, TocItem } from '../../types';
 import { getTableOfContents } from '../../utils/epubParser';
@@ -12,7 +11,8 @@ interface EpubRendererProps {
   onTocLoaded: (toc: TocItem[]) => void;
 }
 
-type ContentLike = Pick<Contents, 'document'> & {
+type ContentLike = {
+  document: Document;
   window?: Window;
   on?: (event: string, listener: () => void) => void;
   off?: (event: string, listener: () => void) => void;
@@ -77,7 +77,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   }, [readerSettings]);
 
   // Inject CSS directly into epub content - more reliable than themes.default() in production
-  const injectContentStyles = useCallback((contents: Contents) => {
+  const injectContentStyles = useCallback((contents: ContentLike) => {
     try {
       const doc = contents.document;
       const themeColors = getThemeColors(readerSettings.theme);
@@ -319,7 +319,8 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
         // Register hook to inject styles directly into each content document
         // This is more reliable than themes.default() in production builds
-        rendition.hooks.content.register((contents) => {
+        rendition.hooks.content.register((rawContents) => {
+          const contents = rawContents as unknown as ContentLike;
           injectContentStyles(contents);
 
           const handleKeyDown = (event: KeyboardEvent) => {
@@ -339,7 +340,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
 
           contents.document.addEventListener('keydown', handleKeyDown);
           contents.window?.addEventListener('keydown', handleKeyDown);
-          contents.on('destroy', () => {
+          contents.on?.('destroy', () => {
             contents.document.removeEventListener('keydown', handleKeyDown);
             contents.window?.removeEventListener('keydown', handleKeyDown);
           });
