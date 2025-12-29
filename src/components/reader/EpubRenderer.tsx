@@ -69,12 +69,38 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     }
   }, [readerSettings]);
 
-  // Inject CSS directly into epub content to prevent image splitting
+  // Inject CSS directly into epub content - more reliable than themes.default() in production
   const injectContentStyles = useCallback((contents: { document: Document }) => {
     try {
       const doc = contents.document;
+      const themeColors = getThemeColors(readerSettings.theme);
+
+      // Remove any previously injected style
+      const existingStyle = doc.getElementById('bookreader-injected-styles');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+
       const style = doc.createElement('style');
+      style.id = 'bookreader-injected-styles';
       style.textContent = `
+        /* Theme colors - ensures text is readable on all themes */
+        body {
+          color: ${themeColors.text} !important;
+          background-color: ${themeColors.background} !important;
+          font-family: ${readerSettings.fontFamily} !important;
+          font-size: ${readerSettings.fontSize}px !important;
+          line-height: ${readerSettings.lineHeight} !important;
+        }
+
+        * {
+          color: inherit !important;
+        }
+
+        a, a:visited, a:hover {
+          color: ${themeColors.link} !important;
+        }
+
         /* Prevent images from being split across columns/pages */
         img, svg, figure, .image, [class*="image"], [class*="cover"], [class*="title"] {
           max-width: 100% !important;
@@ -110,7 +136,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
     } catch (err) {
       console.debug('Could not inject content styles:', err);
     }
-  }, []);
+  }, [readerSettings.theme, readerSettings.fontFamily, readerSettings.fontSize, readerSettings.lineHeight]);
 
   const goNext = useCallback(() => {
     renditionRef.current?.next();
@@ -340,8 +366,19 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   useEffect(() => {
     if (renditionRef.current) {
       applyStyles(renditionRef.current);
+
+      // Also re-inject styles directly into any loaded content views
+      // This ensures theme changes work in production builds
+      try {
+        const contents = renditionRef.current.getContents();
+        contents.forEach((content: { document: Document }) => {
+          injectContentStyles(content);
+        });
+      } catch {
+        // Ignore errors if contents aren't available yet
+      }
     }
-  }, [applyStyles, readerSettings]);
+  }, [applyStyles, injectContentStyles, readerSettings]);
 
   // Regenerate locations when reading settings that affect layout change
   useEffect(() => {
