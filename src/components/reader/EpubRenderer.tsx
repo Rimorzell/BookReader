@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useRef, useCallback, useImperativeHandle } from 'react';
 import ePub, { type Book as EpubBook, type Rendition, type Location } from 'epubjs';
+import type Contents from 'epubjs/types/contents';
 import { useReaderStore, useSettingsStore, useLibraryStore, toast } from '../../stores';
 import type { Book, TocItem } from '../../types';
 import { getTableOfContents } from '../../utils/epubParser';
@@ -70,7 +71,7 @@ export const EpubRenderer = forwardRef<EpubRendererRef, EpubRendererProps>(
   }, [readerSettings]);
 
   // Inject CSS directly into epub content - more reliable than themes.default() in production
-  const injectContentStyles = useCallback((contents: { document: Document }) => {
+  const injectContentStyles = useCallback((contents: Contents) => {
     try {
       const doc = contents.document;
       const themeColors = getThemeColors(readerSettings.theme);
